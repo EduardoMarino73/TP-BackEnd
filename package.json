@@ -13,7 +13,9 @@
   "license": "ISC",
   "packageManager": "pnpm@10.33.2",
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/multer": "^2.1.0",
+    "express": "^5.2.1",
     "tsc-watch": "6.0.4",
     "typescript": "5.1.3"
   },
