@@ -29,7 +29,7 @@ const configuracion_almacenamiento = multer.diskStorage({
     filename:function (req, file, cb) {
         /*algo similar a lo anterior solo que ahora le estoy nombre que quiero que tengan los archivos. Con esta 
         forma evito que se pisen los archivos cuando este haciendo pruebas */
-        cb(null, Date.now() + ' ' + file.filename)
+        cb(null, Date.now() + ' ' + file.originalname)
     }
 })
 
@@ -37,5 +37,7 @@ const configuracion_almacenamiento = multer.diskStorage({
 const almacenamiento = multer({storage: configuracion_almacenamiento})
 
 app.post('/api/videos',almacenamiento.single('contenido'),(req,res) =>{
-    console.log(req.body.titulo)
+    console.log(req.file?.originalname)
+
+    res.send()
 })
