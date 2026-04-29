@@ -1,11 +1,13 @@
 import express from "express";
 import multer from "multer";
+import cors from 'cors';
 //levanto el Servidor   
 const app = express();
 app.listen(3000, () => {
     console.log("El servidor esta iniciado ");
 });
-app.use('/', (req, res) => {
+app.use(cors());
+app.get('/', (req, res) => {
     res.send('Hola Mundo');
 });
 //creo un objeto que sirve como configuracion para almacenar los datos en el disco
@@ -21,9 +23,12 @@ const configuracion_almacenamiento = multer.diskStorage({
     filename: function (req, file, cb) {
         /*algo similar a lo anterior solo que ahora le estoy nombre que quiero que tengan los archivos. Con esta
         forma evito que se pisen los archivos cuando este haciendo pruebas */
-        cb(null, file.filename + ' ' + Date.now());
+        cb(null, Date.now() + ' ' + file.filename);
     }
 });
 /*ahora le doy esa configuracion al objeto que voy a usar para guardar los archivos que reciba */
 const almacenamiento = multer({ storage: configuracion_almacenamiento });
+app.post('/api/videos', almacenamiento.single('contenido'), (req, res) => {
+    console.log(req.body.titulo);
+});
 //# sourceMappingURL=index.js.map
