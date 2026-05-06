@@ -39,7 +39,7 @@ IMPORTANTE acordarse de poner esa palabra clave para no perder media tarde como 
 atte: Eduardo el 5/5/26 a las 18:17 */
 async function listarPeliculas() {
     /*Creo un arreglo vacio donde guardo el nombre de las peliculas que encuentre*/
-    var peliculas = new Array;
+    let peliculas = new Array;
     /*await indica que voy a esperar que lo que este enfrente termine.
     La promesa me indica que quizas ahora no tenga lo que estoy buscando pero que mas adelante me lo va a entregar */
     const directorio = await fs.promises.opendir("./src/contenido/peliculas");
@@ -54,5 +54,16 @@ async function listarPeliculas() {
 Esto es para evitar tener que manejar la promesa que nos devolveria con el metodo then(parametro => {...}) */
 app.get('/contenido/peliculas', async (req, res) => {
     res.send(await listarPeliculas());
+});
+async function listarSeries() {
+    let series = new Array;
+    const directorio = await fs.promises.opendir("./src/contenido/series");
+    for await (const contenido of directorio) {
+        series.push(contenido.name);
+    }
+    return series;
+}
+app.get('/contenido/serires', async (req, res) => {
+    res.send(listarSeries());
 });
 //# sourceMappingURL=index.js.map
