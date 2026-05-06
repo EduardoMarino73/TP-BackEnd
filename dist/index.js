@@ -7,8 +7,7 @@ const app = express();
 app.listen(3000, () => {
     console.log("El servidor esta iniciado ");
 });
-/*objeto donde guardo las configuraciones que utilizo para enviar el contenido a travez de Express*/
-const configuracion_envio = { root: "./" };
+const raiz = "./src";
 app.use(cors());
 //creo un objeto que sirve como configuracion para almacenar los datos en el disco
 const configuracion_almacenamiento = multer.diskStorage({
@@ -53,7 +52,9 @@ async function listarPeliculas() {
 /*Como estamos enviando el resultado de una funcion funcion asincrona hacemos la arrow function asincrona tambien.
 Esto es para evitar tener que manejar la promesa que nos devolveria con el metodo then(parametro => {...}) */
 app.get('/contenido/peliculas', async (req, res) => {
-    res.send(await listarPeliculas());
+    const ruta = raiz + "/contenido/peliculas";
+    const contenido = listarContenido();
+    res.send(await contenido(ruta));
 });
 async function listarSeries() {
     let series = new Array;
@@ -63,7 +64,19 @@ async function listarSeries() {
     }
     return series;
 }
-app.get('/contenido/serires', async (req, res) => {
-    res.send(listarSeries());
+app.get('/contenido/series', async (req, res) => {
+    const ruta = raiz + "/contenido/series";
+    const contenido = listarContenido();
+    res.send(await contenido(ruta));
 });
+function listarContenido() {
+    return async function (ruta) {
+        const directorio = await fs.promises.opendir(ruta);
+        let obejtos = new Array;
+        for await (const objeto of directorio) {
+            obejtos.push(objeto.name);
+        }
+        return obejtos;
+    };
+}
 //# sourceMappingURL=index.js.map

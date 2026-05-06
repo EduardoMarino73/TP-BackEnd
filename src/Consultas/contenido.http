@@ -1,1 +1,4 @@
+GET http://localhost:3000/contenido/series
+
+###
 GET http://localhost:3000/contenido/peliculas
