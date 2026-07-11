@@ -1,4 +1,4 @@
-import { Report } from "../tipo_reporte/report.entidad.ts";
+import { Report } from "../tipo_reporte/report.entity.js";
 
 //objeto que me va a representar a una pelicula durante la ejecucion
 export class Movie {
@@ -8,8 +8,8 @@ export class Movie {
         public category:string,
         public views:BigInteger,
         public description:string,
-        public report:Report[],
-        public state:Boolean, /*---> Maybe a enum is better in this case */
+        public state:boolean, /*---> Maybe a enum is better in this case */
+        public report:Report[] = new Array<Report>,
         public id_Movie = crypto.randomUUID()
         ){}
 }

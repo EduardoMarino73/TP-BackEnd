@@ -27,7 +27,6 @@ export class MovieRepository implements Repository<Movie>{
         return
     }
     
-    /*i need fix this shit */
     public delete(item: { id:string;}): string | undefined {
         return item.id;
     }

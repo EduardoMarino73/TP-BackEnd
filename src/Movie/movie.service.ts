@@ -14,15 +14,22 @@ export class MovieService {
         return this.repo.findAll()
     }
 
-    create(){
-        
+    create(input:Omit<Movie, "report"|"id">): Movie{
+        const movie = new Movie(
+            input.tittle,
+            input.category,
+            input.views,
+            input.description,
+            input.state,
+        );
+        return movie
     }
 
     update(id:string, input: Partial<Movie>): Movie | undefined {
         return this.repo.update({id, ...input} as Movie);
     }
-    
-    /*REMEMBER YOU MUST FIX THIS METHOD, DONT FORGIVE IT */
+
+   
     remove(id: string): String | undefined {
         return this.repo.delete({id});
     }
