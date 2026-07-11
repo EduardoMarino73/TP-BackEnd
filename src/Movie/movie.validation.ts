@@ -10,10 +10,10 @@ export const sanitizeMovieInput = (req:Request, res:Response,next:NextFunction) 
         state: req.body.state
     }
 
-    /*this remove all undefined shit, it works as a partial update */
+    /*this remove all undefined params, it works as a partial update */
     Object.keys(req.body.sanitizeMovieInput).forEach((key) => {
         if (req.body.sanitizeMovieInput[key] === undefined) {
-            delete req.body.sanitizeMovieInput[key]
+            delete req.body.sanitizeMovieInput[key];
         }
     })
 

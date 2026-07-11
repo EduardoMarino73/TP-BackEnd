@@ -7,10 +7,6 @@ del comportamiento necesario para reflejar en la BDDS todos los cambios que una 
 
 export class MovieRepository implements Repository<Movie>{
 
-    /*Implemento la interfaz generica Repositorio y le indico que va a manejar objetos de tipo pelicula.
-    Seguido de eso defio el comportamiento especifico que quiero que tengan todos los metodos que forman 
-    parte del contrato de la interfaz */
-
     findAll(): Movie[] | undefined {
         return
     }
@@ -27,7 +23,7 @@ export class MovieRepository implements Repository<Movie>{
         return
     }
     
-    public delete(item: { id:string;}): string | undefined {
-        return item.id;
+    public delete(item:{ id:string;}): {id:string} | undefined {
+        return item;
     }
 }

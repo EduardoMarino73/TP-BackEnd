@@ -11,7 +11,7 @@ export class MovieService {
     }
 
     finAll(): Movie[] | undefined{
-        return this.repo.findAll()
+        return this.repo.findAll();
     }
 
     create(input:Omit<Movie, "report"|"id">): Movie{
@@ -22,15 +22,22 @@ export class MovieService {
             input.description,
             input.state,
         );
-        return movie
+        return movie;
     }
 
     update(id:string, input: Partial<Movie>): Movie | undefined {
+        /*"...input" copy all the properties from input and make a new object, in this way I have a object with 
+        my id and all the properties like
+        
+        id,
+        tittle,
+        category,
+        ... etc*/
         return this.repo.update({id, ...input} as Movie);
     }
 
    
-    remove(id: string): String | undefined {
+    remove(id: string): {id:string} | undefined {
         return this.repo.delete({id});
     }
 }
