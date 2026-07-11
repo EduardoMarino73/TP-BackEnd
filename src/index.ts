@@ -2,6 +2,7 @@ import express from "express";
 import multer from "multer";
 import cors from 'cors';
 import fs from "fs"
+import { peliculasRouter } from "./peliculas/pelicula.router.js";
 
 //levanto el Servidor   
 const app = express()
@@ -9,9 +10,13 @@ app.listen(3000,() =>{
     console.log("El servidor esta iniciado ")
 })
 
+app.use('./src/peliculas',peliculasRouter)
+
 const raiz = "./src"
 
 app.use(cors())
+
+app.use('contenido/peliculas', express.static(raiz + 'contenido/peliculas'))
 
 //creo un objeto que sirve como configuracion para almacenar los datos en el disco
 const configuracion_almacenamiento = multer.diskStorage({
@@ -42,27 +47,6 @@ app.post('/api/videos',almacenamiento.single('contenido'),(req,res) =>{
 
     res.send()
 })
-
-/*Siempre que se trabaje con archivos vamos a tener que usar la palabra async para indicar que trabajamos de forma asincrona.
-IMPORTANTE acordarse de poner esa palabra clave para no perder media tarde como me paso
-atte: Eduardo el 5/5/26 a las 18:17 */
-async function listarPeliculas() {
-
-    /*Creo un arreglo vacio donde guardo el nombre de las peliculas que encuentre*/
-    let peliculas:Array<String> = new Array<String>;
-
-    /*await indica que voy a esperar que lo que este enfrente termine.
-    La promesa me indica que quizas ahora no tenga lo que estoy buscando pero que mas adelante me lo va a entregar */
-    const directorio = await fs.promises.opendir("./src/contenido/peliculas");
-
-    /*Recorro el directorio agregando los nombre de las peliculas al arreglo de peliculas */
-    for await(const contenido of directorio){
-        peliculas.push(contenido.name);
-    }
-
-    /*Devuelvo el arreglo con todas las peliculas que encontre(puede llegar a estar vacio) */
-    return peliculas
-}
 
 /*Uso de funciones de alto orden */
 function listarContenido() {
