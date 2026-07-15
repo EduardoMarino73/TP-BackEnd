@@ -1,0 +1,1 @@
+{"version":3,"file":"denuncia.controlador.js","sourceRoot":"","sources":["../../src/denuncia/denuncia.controlador.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,mBAAmB,EAAE,MAAM,2BAA2B,CAAC;AAEhE,MAAM,WAAW,GAAG,IAAI,mBAAmB,EAAE,CAAA;AAE7C,SAAS,OAAO,CAAC,GAAW,EAAC,GAAY;IACrC,GAAG,CAAC,IAAI,CAAC,EAAC,IAAI,EAAC,WAAW,CAAC,OAAO,EAAC,CAAC,CAAA;AACxC,CAAC;AAED,OAAM,EAAC,OAAO,EAAC,CAAA"}

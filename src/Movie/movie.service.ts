@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { Repository } from "../Shared/repository.js";
 import { Movie } from "./movie.entity.js";
 
@@ -6,11 +7,11 @@ import { Movie } from "./movie.entity.js";
 export class MovieService {
     public constructor(private repo:Repository<Movie>){}
 
-    findOne(id:string): Movie | undefined{
+    findOne(id:string): Promise<Movie | undefined>{
         return this.repo.findOne({id})
     }
 
-    finAll(): Movie[] | undefined{
+    finAll(): Promise<Movie[] | undefined>{
         return this.repo.findAll();
     }
 
@@ -25,7 +26,7 @@ export class MovieService {
         return movie;
     }
 
-    update(id:string, input: Partial<Movie>): Movie | undefined {
+    update(id:string, input: Partial<Movie>): Promise<Movie | undefined> {
         /*"...input" copy all the properties from input and make a new object, in this way I have a object with 
         my id and all the properties like
         
@@ -37,7 +38,7 @@ export class MovieService {
     }
 
    
-    remove(id: string): {id:string} | undefined {
+    remove(id: string): Promise<{_id:ObjectId} | undefined> {
         return this.repo.delete({id});
     }
 }

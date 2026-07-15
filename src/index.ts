@@ -2,7 +2,7 @@ import express from "express";
 import multer from "multer";
 import cors from 'cors';
 import fs from "fs"
-import { peliculasRouter } from "./peliculas/pelicula.router.js";
+import { movieRouter } from "./Movie/movie.routes.js";
 
 //levanto el Servidor   
 const app = express()
@@ -10,7 +10,7 @@ app.listen(3000,() =>{
     console.log("El servidor esta iniciado ")
 })
 
-app.use('./src/peliculas',peliculasRouter)
+app.use('./src/peliculas',movieRouter)
 
 const raiz = "./src"
 

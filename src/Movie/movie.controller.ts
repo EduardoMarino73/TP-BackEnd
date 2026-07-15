@@ -45,5 +45,5 @@ export const remove = (req:Request,res:Response) => {
     if(!result){
         return res.sendStatus(500).send({message: "internal error"});
     }
-    return res.sendStatus(201).send({message: `movie with id: ${result.id} was removed`});
+    return res.sendStatus(201).send({message: `movie with id: ${result} was removed`});
 }

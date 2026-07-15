@@ -1,4 +1,5 @@
-import { Report } from "../tipo_reporte/report.entity.js";
+import { ObjectId } from "mongodb";
+import { Report_type } from "../Report_Type/report_type.entity.js";
 
 //objeto que me va a representar a una pelicula durante la ejecucion
 export class Movie {
@@ -9,7 +10,7 @@ export class Movie {
         public views:BigInteger,
         public description:string,
         public state:boolean, /*---> Maybe a enum is better in this case */
-        public report:Report[] = new Array<Report>,
-        public id_Movie = crypto.randomUUID()
+        public report?:Report_type[],
+        public _id_Movie?:ObjectId
         ){}
 }
