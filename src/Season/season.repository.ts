@@ -10,7 +10,7 @@ export class TemporadaRepositorio implements Repository<Season> {
     async findOne(item: { id: string; }): Promise<Season | undefined> {
         throw new Error("Method not implemented.");
     }
-    async add(item: Season): Promise<Season | undefined> {
+    async create(item: Season): Promise<Season | undefined> {
         throw new Error("Method not implemented.");
     }
     async update(item: Season): Promise<Season | undefined> {

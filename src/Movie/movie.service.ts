@@ -8,21 +8,24 @@ export class MovieService {
     public constructor(private repo:Repository<Movie>){}
 
     findOne(id:string): Promise<Movie | undefined>{
-        return this.repo.findOne({id})
+        console.log("the service send the id to the repository");
+        return this.repo.findOne({id});
     }
 
-    finAll(): Promise<Movie[] | undefined>{
-        return this.repo.findAll();
+    async finAll(): Promise<Movie[] | undefined>{        
+        return await this.repo.findAll();
     }
 
     create(input:Omit<Movie, "report"|"id">): Movie{
         const movie = new Movie(
-            input.tittle,
+            input.title,
             input.category,
             input.views,
             input.description,
             input.state,
         );
+
+        this.repo.create(movie)
         return movie;
     }
 
@@ -34,7 +37,10 @@ export class MovieService {
         tittle,
         category,
         ... etc*/
-        return this.repo.update({id, ...input} as Movie);
+
+        const id_Movie = new ObjectId(id);
+
+        return this.repo.update(id_Movie,input as Movie);
     }
 
    

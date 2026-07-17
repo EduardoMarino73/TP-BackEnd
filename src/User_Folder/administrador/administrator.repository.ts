@@ -10,7 +10,7 @@ export class AdministratorRepository implements Repository<Administrator>{
     async findOne(item: { id: string; }): Promise<Administrator | undefined> {
         throw new Error("Method not implemented.");
     }
-    async add(item: Administrator): Promise<Administrator | undefined> {
+    async create(item: Administrator): Promise<Administrator | undefined> {
         throw new Error("Method not implemented.");
     }
     async update(item: Administrator): Promise<Administrator | undefined> {

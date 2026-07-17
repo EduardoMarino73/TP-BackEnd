@@ -3,13 +3,13 @@ import { MovieService } from "./movie.service.js";
 /*El controlador se va a encargar de manejar la logica del negocio que me permite armar un paquete
 con toda la informacion que voy a tener que devolver al FrontEnd */
 const service = new MovieService(new MovieRepository());
-/*El controlador llama al metodo puntual del DAO y retorna el valor devuelto por el mismo en forma de JSON */
-export const findAll = (req, res) => {
-    res.json(service.finAll());
+export const findAll = async (req, res) => {
+    res.json(await service.finAll());
 };
-export const findOne = (req, res) => {
+export const findOne = async (req, res) => {
+    /*take the id param from the URL and send this to movie.service*/
     const id_Movie = req.params.id;
-    const movie = service.findOne(id_Movie);
+    const movie = await service.findOne(id_Movie);
     if (!movie) {
         return res.sendStatus(404).send({ message: "movie not found" });
     }
@@ -19,12 +19,12 @@ export const create = (req, res) => {
     const movie = service.create(req.body);
     return res.sendStatus(201).json({ message: "movie created", data: movie });
 };
-export const update = (req, res) => {
+export const update = async (req, res) => {
     const id_Movie = req.params.id;
     /* "req.body.sanitizeMovieInput" is a callback that clear all the undefined params of my movie object */
-    const movie = service.update(id_Movie, req.body.sanitizeMovieInput);
+    const movie = await service.update(id_Movie, req.body.sanitizeMovieInput);
     if (!movie) {
-        return res.sendStatus(404).send({ message: "movie not found" });
+        return res.sendStatus(404);
     }
     return res.sendStatus(201).send({ message: "movie updated", data: movie });
 };

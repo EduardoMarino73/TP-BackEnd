@@ -9,7 +9,7 @@ export class Report_TypeRepository implements Repository<Report_type>{
     async findOne(item: { id: string; }): Promise<Report_type | undefined> {
         throw new Error("Method not implemented.");
     }
-    async add(item: Report_type): Promise<Report_type | undefined> {
+    async create(item: Report_type): Promise<Report_type | undefined> {
         throw new Error("Method not implemented.");
     }
     async update(item: Report_type): Promise<Report_type | undefined> {

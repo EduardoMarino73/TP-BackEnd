@@ -10,7 +10,7 @@ export class ComplaintRepository implements Repository<Denuncia>{
     async findOne(item: { id: string; }): Promise<Denuncia | undefined> {
         throw new Error("Method not implemented.");
     }
-    async add(item: Denuncia): Promise<Denuncia | undefined> {
+    async create(item: Denuncia): Promise<Denuncia | undefined> {
         throw new Error("Method not implemented.");
     }
     async update(item: Denuncia): Promise<Denuncia | undefined> {

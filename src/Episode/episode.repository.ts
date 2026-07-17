@@ -16,7 +16,7 @@ export class EpisodieRepository implements Repository<Episodie> {
     async findOne(item: { id: string; }): Promise<Episodie | undefined> {
         throw new Error("Method not implemented.");
     }
-    async add(item: Episodie): Promise<Episodie | undefined> {
+    async create(item: Episodie): Promise<Episodie | undefined> {
         throw new Error("Method not implemented.");
     }
     async update(item: Episodie): Promise<Episodie | undefined> {

@@ -9,7 +9,7 @@ export class EpisodieRepository {
     async findOne(item) {
         throw new Error("Method not implemented.");
     }
-    async add(item) {
+    async create(item) {
         throw new Error("Method not implemented.");
     }
     async update(item) {

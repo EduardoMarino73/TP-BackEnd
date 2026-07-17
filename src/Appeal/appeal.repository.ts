@@ -10,7 +10,7 @@ export class AppealRepository implements Repository<Appeal>{
     async findOne(item: { id: string; }): Promise<Appeal | undefined> {
         throw new Error("Method not implemented.");
     }
-    async add(item: Appeal): Promise<Appeal | undefined> {
+    async create(item: Appeal): Promise<Appeal | undefined> {
         throw new Error("Method not implemented.");
     }
     async update(item: Appeal): Promise<Appeal | undefined> {

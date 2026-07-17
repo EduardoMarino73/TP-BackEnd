@@ -3,7 +3,7 @@
 // Use Ctrl+Space inside a snippet or a string literal to trigger completions.
 
 const database = 'cheNeflix';
-const collection = 'peliculas';
+const collection = 'movie';
 
 // Create a new database.
 use(database);

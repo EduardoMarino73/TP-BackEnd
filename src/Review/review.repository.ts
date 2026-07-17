@@ -10,7 +10,7 @@ export class ReviewRepository implements Repository<Review>{
     async findOne(item: { id: string; }): Promise<Review | undefined> {
         throw new Error("Method not implemented.");
     }
-    async add(item: Review): Promise<Review | undefined> {
+    async create(item: Review): Promise<Review | undefined> {
         throw new Error("Method not implemented.");
     }
     async update(item: Review): Promise<Review | undefined> {

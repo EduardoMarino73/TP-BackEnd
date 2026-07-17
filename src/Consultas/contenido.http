@@ -1,4 +1,28 @@
-GET http://localhost:3000/contenido/series
+GET http://localhost:3000/api/movie
 
 ###
-GET http://localhost:3000/contenido/peliculas
+GET http://localhost:3000/api/movie/6a5a79f64f71e9cb8b36f235
+
+###
+POST http://localhost:3000/api/movie
+Content-Type: application/json
+
+{
+  "title": "Back to the Future",
+  "category": "fiction",
+  "views": 0,
+  "description": "very good",
+  "state": true
+}
+
+###
+PUT http://localhost:3000/api/movie/6a5a9a74673dc5e05f499c78
+Content-Type: application/json
+
+{
+  "description": "regular"
+}
+
+###
+DELETE  http://localhost:3000/api/movie/6a5a90d97c91aea680926411
+Content-Type: application/json

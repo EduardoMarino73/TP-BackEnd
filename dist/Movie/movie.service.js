@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { Movie } from "./movie.entity.js";
 /*Here is where Im going to do all the bussines logic, like create a new movie or find one movie of the dbb*/
 export class MovieService {
@@ -5,13 +6,15 @@ export class MovieService {
         this.repo = repo;
     }
     findOne(id) {
+        console.log("the service send the id to the repository");
         return this.repo.findOne({ id });
     }
-    finAll() {
-        return this.repo.findAll();
+    async finAll() {
+        return await this.repo.findAll();
     }
     create(input) {
-        const movie = new Movie(input.tittle, input.category, input.views, input.description, input.state);
+        const movie = new Movie(input.title, input.category, input.views, input.description, input.state);
+        this.repo.create(movie);
         return movie;
     }
     update(id, input) {
@@ -22,7 +25,8 @@ export class MovieService {
         tittle,
         category,
         ... etc*/
-        return this.repo.update({ id, ...input });
+        const id_Movie = new ObjectId(id);
+        return this.repo.update(id_Movie, input);
     }
     remove(id) {
         return this.repo.delete({ id });

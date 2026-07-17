@@ -1,6 +1,6 @@
 export const sanitizeMovieInput = (req, res, next) => {
     req.body.sanitizeMovieInput = {
-        tittle: req.body.tittle,
+        title: req.body.title,
         category: req.body.category,
         views: req.body.views,
         description: req.body.description,
