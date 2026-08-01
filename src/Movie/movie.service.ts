@@ -1,32 +1,33 @@
-import { ObjectId } from "mongodb";
-import { Repository } from "../Shared/repository.js";
 import { Movie } from "./movie.entity.js";
+import { Repository } from "../Shared/repository.js";
 
 /*Here is where Im going to do all the bussines logic, like create a new movie or find one movie of the dbb*/
 
 export class MovieService {
-    public constructor(private repo:Repository<Movie>){}
+    public constructor(private repo: Repository<Movie>){}
 
     findOne(id:string): Promise<Movie | undefined>{
         console.log("the service send the id to the repository");
-        return this.repo.findOne({id});
+        const movieId = Number(id);
+        if (!Number.isInteger(movieId) || movieId < 1) return Promise.resolve(undefined);
+        return this.repo.findOne(movieId);
     }
 
-    async finAll(): Promise<Movie[] | undefined>{        
+    async findAll(): Promise<Movie[]> {
         return await this.repo.findAll();
     }
 
-    create(input:Omit<Movie, "report"|"id">): Movie{
+    async create(input:Omit<Movie, "report"|"id">): Promise<Movie>{
         const movie = new Movie(
-            input.title,
+            input.path,
+            input.tittle,
             input.category,
             input.views,
             input.description,
             input.state,
         );
 
-        this.repo.create(movie)
-        return movie;
+        return this.repo.create(movie);
     }
 
     update(id:string, input: Partial<Movie>): Promise<Movie | undefined> {
@@ -38,13 +39,15 @@ export class MovieService {
         category,
         ... etc*/
 
-        const id_Movie = new ObjectId(id);
-
-        return this.repo.update(id_Movie,input as Movie);
+        const id_Movie = Number(id);
+        if (!Number.isInteger(id_Movie) || id_Movie < 1) return Promise.resolve(undefined);
+        return this.repo.update(id_Movie,input);
     }
 
    
-    remove(id: string): Promise<{_id:ObjectId} | undefined> {
-        return this.repo.delete({id});
+    remove(id: string): Promise<boolean> {
+        const movieId = Number(id);
+        if (!Number.isInteger(movieId) || movieId < 1) return Promise.resolve(false);
+        return this.repo.delete(movieId);
     }
 }

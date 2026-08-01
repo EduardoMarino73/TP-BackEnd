@@ -8,7 +8,8 @@ POST http://localhost:3000/api/movie
 Content-Type: application/json
 
 {
-  "title": "Back to the Future",
+  "path": "asd",
+  "tittle": "Back to the Future",
   "category": "fiction",
   "views": 0,
   "description": "very good",
@@ -24,5 +25,5 @@ Content-Type: application/json
 }
 
 ###
-DELETE  http://localhost:3000/api/movie/6a5a90d97c91aea680926411
+DELETE  http://localhost:3000/api/movie/1
 Content-Type: application/json

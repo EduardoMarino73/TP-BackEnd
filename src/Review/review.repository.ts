@@ -1,22 +1,21 @@
-import { ObjectId } from "mongodb";
 import { Repository } from "../Shared/repository.js";
 import { Review } from "./review.entity.js";
 
 export class ReviewRepository implements Repository<Review>{
     
-    async findAll(): Promise<Review[] | undefined> {
-        return 
-    }
-    async findOne(item: { id: string; }): Promise<Review | undefined> {
+    async findAll(): Promise<Review[]> {
         throw new Error("Method not implemented.");
     }
-    async create(item: Review): Promise<Review | undefined> {
+    async findOne(id: number): Promise<Review | undefined> {
         throw new Error("Method not implemented.");
     }
-    async update(item: Review): Promise<Review | undefined> {
+    async create(item: Review): Promise<Review> {
         throw new Error("Method not implemented.");
     }
-    async delete(item: { id: string; }): Promise<{_id:ObjectId} | undefined> {
-        return 
+    async update(id: number, input: Partial<Review>): Promise<Review | undefined> {
+        throw new Error("Method not implemented.");
     }
-} 
+    async delete(id: number): Promise<boolean> {
+        throw new Error("Method not implemented.");
+    }
+}

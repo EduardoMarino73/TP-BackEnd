@@ -2,16 +2,16 @@ export class AdministratorRepository {
     async findAll() {
         throw new Error("Method not implemented.");
     }
-    async findOne(item) {
+    async findOne(id) {
         throw new Error("Method not implemented.");
     }
     async create(item) {
         throw new Error("Method not implemented.");
     }
-    async update(item) {
+    async update(id, input) {
         throw new Error("Method not implemented.");
     }
-    async delete(item) {
+    async delete(id) {
         throw new Error("Method not implemented.");
     }
 }

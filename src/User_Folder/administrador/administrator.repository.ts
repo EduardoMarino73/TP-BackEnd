@@ -1,22 +1,21 @@
-import { ObjectId } from "mongodb";
 import { Repository } from "../../Shared/repository.js";
 import { Administrator } from "./administrator.entity.js";
 
 export class AdministratorRepository implements Repository<Administrator>{
     
-    async findAll(): Promise<Administrator[] | undefined> {
+    async findAll(): Promise<Administrator[]> {
         throw new Error("Method not implemented.");
     }
-    async findOne(item: { id: string; }): Promise<Administrator | undefined> {
+    async findOne(id: number): Promise<Administrator | undefined> {
         throw new Error("Method not implemented.");
     }
-    async create(item: Administrator): Promise<Administrator | undefined> {
+    async create(item: Administrator): Promise<Administrator> {
         throw new Error("Method not implemented.");
     }
-    async update(item: Administrator): Promise<Administrator | undefined> {
+    async update(id: number, input: Partial<Administrator>): Promise<Administrator | undefined> {
         throw new Error("Method not implemented.");
     }
-    async delete(item: { id: string; }): Promise<{_id:ObjectId} | undefined> {
+    async delete(id: number): Promise<boolean> {
         throw new Error("Method not implemented.");
     }
 

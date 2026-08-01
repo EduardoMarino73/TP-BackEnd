@@ -1,4 +1,3 @@
-import { ObjectId } from "mongodb";
 import { Movie } from "./movie.entity.js";
 /*Here is where Im going to do all the bussines logic, like create a new movie or find one movie of the dbb*/
 export class MovieService {
@@ -7,15 +6,17 @@ export class MovieService {
     }
     findOne(id) {
         console.log("the service send the id to the repository");
-        return this.repo.findOne({ id });
+        const movieId = Number(id);
+        if (!Number.isInteger(movieId) || movieId < 1)
+            return Promise.resolve(undefined);
+        return this.repo.findOne(movieId);
     }
-    async finAll() {
+    async findAll() {
         return await this.repo.findAll();
     }
-    create(input) {
-        const movie = new Movie(input.title, input.category, input.views, input.description, input.state);
-        this.repo.create(movie);
-        return movie;
+    async create(input) {
+        const movie = new Movie(input.path, input.tittle, input.category, input.views, input.description, input.state);
+        return this.repo.create(movie);
     }
     update(id, input) {
         /*"...input" copy all the properties from input and make a new object, in this way I have a object with
@@ -25,11 +26,16 @@ export class MovieService {
         tittle,
         category,
         ... etc*/
-        const id_Movie = new ObjectId(id);
+        const id_Movie = Number(id);
+        if (!Number.isInteger(id_Movie) || id_Movie < 1)
+            return Promise.resolve(undefined);
         return this.repo.update(id_Movie, input);
     }
     remove(id) {
-        return this.repo.delete({ id });
+        const movieId = Number(id);
+        if (!Number.isInteger(movieId) || movieId < 1)
+            return Promise.resolve(false);
+        return this.repo.delete(movieId);
     }
 }
 //# sourceMappingURL=movie.service.js.map

@@ -4,7 +4,7 @@ import { MovieService } from "./movie.service.js";
 con toda la informacion que voy a tener que devolver al FrontEnd */
 const service = new MovieService(new MovieRepository());
 export const findAll = async (req, res) => {
-    res.json(await service.finAll());
+    res.json(await service.findAll());
 };
 export const findOne = async (req, res) => {
     /*take the id param from the URL and send this to movie.service*/
@@ -15,9 +15,18 @@ export const findOne = async (req, res) => {
     }
     return res.send({ movie });
 };
-export const create = (req, res) => {
-    const movie = service.create(req.body);
-    return res.sendStatus(201).json({ message: "movie created", data: movie });
+export const create = async (req, res) => {
+    const movieInput = req.body.sanitizeMovieInput;
+    const requiredFields = ["tittle", "category", "views", "description", "state"];
+    const missingFields = requiredFields.filter((field) => movieInput[field] === undefined);
+    if (missingFields.length > 0) {
+        return res.status(400).json({
+            message: "Missing required movie fields",
+            fields: missingFields,
+        });
+    }
+    const movie = await service.create(movieInput);
+    return res.status(201).json({ message: "movie created", data: movie });
 };
 export const update = async (req, res) => {
     const id_Movie = req.params.id;
@@ -26,14 +35,14 @@ export const update = async (req, res) => {
     if (!movie) {
         return res.sendStatus(404);
     }
-    return res.sendStatus(201).send({ message: "movie updated", data: movie });
+    return res.status(200).send({ message: "movie updated", data: movie });
 };
-export const remove = (req, res) => {
+export const remove = async (req, res) => {
     const id_Movie = req.params.id;
-    const result = service.remove(id_Movie);
+    const result = await service.remove(id_Movie);
     if (!result) {
         return res.sendStatus(500).send({ message: "internal error" });
     }
-    return res.sendStatus(201).send({ message: `movie with id: ${result} was removed` });
+    return res.status(200).send({ message: `movie with id: ${id_Movie} was removed` });
 };
 //# sourceMappingURL=movie.controller.js.map

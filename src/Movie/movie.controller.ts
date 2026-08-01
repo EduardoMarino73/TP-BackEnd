@@ -8,7 +8,7 @@ con toda la informacion que voy a tener que devolver al FrontEnd */
 const service = new MovieService(new MovieRepository());
 
 export const findAll = async (req:Request,res:Response) =>{
-   res.json(await service.finAll());
+   res.json(await service.findAll());
 }
 
 export const findOne = async (req:Request,res:Response) =>{
@@ -22,9 +22,20 @@ export const findOne = async (req:Request,res:Response) =>{
     return res.send({movie});
 }
 
-export const create = (req:Request,res:Response) =>{
-    const movie = service.create(req.body);
-    return res.sendStatus(201).json({message: "movie created", data:movie});
+export const create = async (req:Request,res:Response) =>{
+    const movieInput = req.body.sanitizeMovieInput;
+    const requiredFields = ["tittle", "category", "views", "description", "state"] as const;
+    const missingFields = requiredFields.filter((field) => movieInput[field] === undefined);
+
+    if (missingFields.length > 0) {
+        return res.status(400).json({
+            message: "Missing required movie fields",
+            fields: missingFields,
+        });
+    }
+
+    const movie = await service.create(movieInput);
+    return res.status(201).json({message: "movie created", data:movie});
 }
 
 export const update = async (req:Request,res:Response) =>{
@@ -35,15 +46,15 @@ export const update = async (req:Request,res:Response) =>{
     if(!movie){
         return res.sendStatus(404);
     }
-    return res.sendStatus(201).send({message: "movie updated",data:movie});
+    return res.status(200).send({message: "movie updated",data:movie});
 }
 
-export const remove = (req:Request,res:Response) => {
+export const remove = async (req:Request,res:Response) => {
     const id_Movie = req.params.id as string;
-    const result = service.remove(id_Movie);
+    const result = await service.remove(id_Movie);
 
     if(!result){
         return res.sendStatus(500).send({message: "internal error"});
     }
-    return res.sendStatus(201).send({message: `movie with id: ${result} was removed`});
+    return res.status(200).send({message: `movie with id: ${id_Movie} was removed`});
 }
