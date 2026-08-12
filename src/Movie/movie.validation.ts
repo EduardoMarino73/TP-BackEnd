@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 
 export const sanitizeMovieInput = (req:Request, res:Response,next:NextFunction) => {
     req.body.sanitizeMovieInput = {
+        id_author:req.body.id_author,
         tittle: req.body.tittle,
         category: req.body.category,
         views: req.body.views,

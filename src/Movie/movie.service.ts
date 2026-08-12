@@ -7,8 +7,8 @@ export class MovieService {
     public constructor(private repo: Repository<Movie>){}
 
     findOne(id:string): Promise<Movie | undefined>{
-        console.log("the service send the id to the repository");
         const movieId = Number(id);
+        /**if can not cast the id return undefined */
         if (!Number.isInteger(movieId) || movieId < 1) return Promise.resolve(undefined);
         return this.repo.findOne(movieId);
     }
@@ -17,8 +17,10 @@ export class MovieService {
         return await this.repo.findAll();
     }
 
+    /**this omit the report and id parameters of the instance of Movie */
     async create(input:Omit<Movie, "report"|"id">): Promise<Movie>{
         const movie = new Movie(
+            input.id_author,
             input.path,
             input.tittle,
             input.category,

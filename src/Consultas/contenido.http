@@ -1,13 +1,14 @@
 GET http://localhost:3000/api/movie
 
 ###
-GET http://localhost:3000/api/movie/6a5a79f64f71e9cb8b36f235
+GET http://localhost:3000/api/movie
 
 ###
 POST http://localhost:3000/api/movie
 Content-Type: application/json
 
 {
+  "id_author": 2,
   "path": "asd",
   "tittle": "Back to the Future",
   "category": "fiction",
@@ -17,7 +18,7 @@ Content-Type: application/json
 }
 
 ###
-PUT http://localhost:3000/api/movie/6a5a9a74673dc5e05f499c78
+PUT http://localhost:3000/api/movie/2
 Content-Type: application/json
 
 {

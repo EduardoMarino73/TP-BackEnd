@@ -2,9 +2,6 @@ import { Request, Response } from "express";
 import { MovieRepository } from "./movie.repository.js";
 import { MovieService } from "./movie.service.js";
 
-/*El controlador se va a encargar de manejar la logica del negocio que me permite armar un paquete
-con toda la informacion que voy a tener que devolver al FrontEnd */
-
 const service = new MovieService(new MovieRepository());
 
 export const findAll = async (req:Request,res:Response) =>{
@@ -24,7 +21,7 @@ export const findOne = async (req:Request,res:Response) =>{
 
 export const create = async (req:Request,res:Response) =>{
     const movieInput = req.body.sanitizeMovieInput;
-    const requiredFields = ["tittle", "category", "views", "description", "state"] as const;
+    const requiredFields = ["id_author","tittle", "category", "views", "description", "state"] as const;
     const missingFields = requiredFields.filter((field) => movieInput[field] === undefined);
 
     if (missingFields.length > 0) {

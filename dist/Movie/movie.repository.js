@@ -1,26 +1,26 @@
 import { Movie } from "./movie.entity.js";
 import { db } from "../Shared/database/connections.js";
 /*is a function that convet a MovieRow into instance of Movie */
-const toMovie = (row) => new Movie(row.path, row.tittle, row.category, Number(row.views), row.description, Boolean(row.state), undefined, row.id);
+const toMovie = (row) => new Movie(row.id_author, row.path, row.tittle, row.category, Number(row.views), row.description, Boolean(row.state), undefined, row.id);
 export class MovieRepository {
     async findAll() {
         /* the [rows] only take the firts parameter of the return
         its like:
         const result = await db.query...
         const rows = result[0]*/
-        const [rows] = await db.query("SELECT id, title, category, views, description, state FROM movies ORDER BY id");
+        const [rows] = await db.query("SELECT id, id_author, tittle, category, views, description, state FROM movies ORDER BY id");
         /*map apply a callback function to every item into the array rows*/
         return rows.map(toMovie);
     }
     async findOne(id) {
         /*take the firts parameter*/
-        const [rows] = await db.query("SELECT id, title, category, views, description, state FROM movies WHERE id = ?", [id]);
+        const [rows] = await db.query("SELECT id, id_author, tittle, category, views, description, state FROM movies WHERE id = ?", [id]);
         /*ternary operators
         try to return a movie or, insted return undefined */
         return rows[0] ? toMovie(rows[0]) : undefined;
     }
     async create(item) {
-        const [result] = await db.execute("INSERT INTO movies (tittle, category, views, description, state) VALUES (?, ?, ?, ?, ?)", [item.tittle, item.category, item.views, item.description, item.state]);
+        const [result] = await db.execute("INSERT INTO movies (id_author,tittle, category, views, description, state) VALUES (?, ?, ?, ?, ?, ?)", [item.id_author, item.tittle, item.category, item.views, item.description, item.state]);
         /**it set the id of the movie that inserted into the table of the database*/
         item.id = result.insertId;
         return item;

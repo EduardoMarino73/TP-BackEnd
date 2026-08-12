@@ -6,6 +6,8 @@ import { Repository } from "../Shared/repository.js";
 /*represent a table in the movies table */
 type MovieRow = RowDataPacket & {
     id: number;
+    id_author:bigint;
+    path:string;
     title: string;
     category: string;
     views: number;
@@ -13,13 +15,9 @@ type MovieRow = RowDataPacket & {
     state: number;
 };
 
-export type DTO_Movie = {
-    id: number;
-    tittle: string;
-}
-
 /*is a function that convet a MovieRow into instance of Movie */
 const toMovie = (row: MovieRow): Movie => new Movie(
+    row.id_author,
     row.path,
     row.tittle,
     row.category,
@@ -38,7 +36,7 @@ export class MovieRepository implements Repository<Movie> {
         const result = await db.query...
         const rows = result[0]*/
         const [rows] = await db.query<MovieRow[]>(
-            "SELECT id, title, category, views, description, state FROM movies ORDER BY id",
+            "SELECT id, id_author, tittle, category, views, description, state FROM movies ORDER BY id",
         );
         /*map apply a callback function to every item into the array rows*/
         return rows.map(toMovie);
@@ -47,7 +45,7 @@ export class MovieRepository implements Repository<Movie> {
     async findOne(id: number): Promise<Movie | undefined> {
         /*take the firts parameter*/
         const [rows] = await db.query<MovieRow[]>(
-            "SELECT id, title, category, views, description, state FROM movies WHERE id = ?",
+            "SELECT id, id_author, tittle, category, views, description, state FROM movies WHERE id = ?",
             [id],
         );
         /*ternary operators
@@ -57,8 +55,8 @@ export class MovieRepository implements Repository<Movie> {
 
     async create(item: Movie): Promise<Movie> {
         const [result] = await db.execute<ResultSetHeader>(
-            "INSERT INTO movies (tittle, category, views, description, state) VALUES (?, ?, ?, ?, ?)",
-            [item.tittle, item.category, item.views, item.description, item.state],
+            "INSERT INTO movies (id_author,tittle, category, views, description, state) VALUES (?, ?, ?, ?, ?, ?)",
+            [item.id_author, item.tittle, item.category, item.views, item.description, item.state],
         );
         /**it set the id of the movie that inserted into the table of the database*/
         item.id = result.insertId;

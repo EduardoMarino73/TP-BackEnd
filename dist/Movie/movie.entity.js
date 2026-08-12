@@ -1,6 +1,7 @@
-//objeto que me va a representar a una pelicula durante la ejecucion
+//Movie Object
 export class Movie {
-    constructor(path, tittle, category, views, description, state, /*---> Maybe a enum is better in this case */ report, id) {
+    constructor(id_author, path, tittle, category, views, description, state, /*---> Maybe a enum is better in this case */ report, id) {
+        this.id_author = id_author;
         this.path = path;
         this.tittle = tittle;
         this.category = category;

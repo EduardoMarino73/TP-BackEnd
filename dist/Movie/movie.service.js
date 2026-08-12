@@ -5,8 +5,8 @@ export class MovieService {
         this.repo = repo;
     }
     findOne(id) {
-        console.log("the service send the id to the repository");
         const movieId = Number(id);
+        /**if can not cast the id return undefined */
         if (!Number.isInteger(movieId) || movieId < 1)
             return Promise.resolve(undefined);
         return this.repo.findOne(movieId);
@@ -14,8 +14,9 @@ export class MovieService {
     async findAll() {
         return await this.repo.findAll();
     }
+    /**this omit the report and id parameters of the instance of Movie */
     async create(input) {
-        const movie = new Movie(input.path, input.tittle, input.category, input.views, input.description, input.state);
+        const movie = new Movie(input.id_author, input.path, input.tittle, input.category, input.views, input.description, input.state);
         return this.repo.create(movie);
     }
     update(id, input) {
