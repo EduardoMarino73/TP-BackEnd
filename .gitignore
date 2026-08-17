@@ -1,3 +1,4 @@
 node_modules/
 Consultas/
 .env
+dist/tsconfig.tsbuildinfo
