@@ -7,15 +7,15 @@ import { Repository } from "../Shared/repository.js";
 type MovieRow = RowDataPacket & {
     id: number;
     id_author:bigint;
-    path:string;
-    title: string;
+    pathF:string;
+    titte: string;
     category: string;
     views: number;
     description: string;
     state: number;
 };
 
-/*is a function that convet a MovieRow into instance of Movie */
+/*is a function that convert a MovieRow into instance of Movie */
 const toMovie = (row: MovieRow): Movie => new Movie(
     row.id_author,
     row.path,
@@ -30,7 +30,7 @@ const toMovie = (row: MovieRow): Movie => new Movie(
 
 export class MovieRepository implements Repository<Movie> {
 
-    async findAll(): Promise<Movie[]> {
+    async findAll(): Promise<Movie[] | undefined> {
         /* the [rows] only take the firts parameter of the return
         its like:
         const result = await db.query...
@@ -55,8 +55,8 @@ export class MovieRepository implements Repository<Movie> {
 
     async create(item: Movie): Promise<Movie> {
         const [result] = await db.execute<ResultSetHeader>(
-            "INSERT INTO movies (id_author,tittle, category, views, description, state) VALUES (?, ?, ?, ?, ?, ?)",
-            [item.id_author, item.tittle, item.category, item.views, item.description, item.state],
+            "INSERT INTO movies (id_author,pathF,tittle, category, views, description, state) VALUES (?, ?, ?, ?, ?, ?,?)",
+            [item.id_author, item.pathF, item.tittle, item.category, item.views, item.description, item.state],
         );
         /**it set the id of the movie that inserted into the table of the database*/
         item.id = result.insertId;

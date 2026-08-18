@@ -5,7 +5,7 @@ export class Movie {
  
     constructor(
         public id_author:bigint,
-        public path:string,
+        public pathF:string,
         public tittle:string,
         public category:string,
         public views:number,

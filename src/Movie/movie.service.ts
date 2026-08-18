@@ -6,14 +6,16 @@ import { Repository } from "../Shared/repository.js";
 export class MovieService {
     public constructor(private repo: Repository<Movie>){}
 
-    findOne(id:string): Promise<Movie | undefined>{
+    async findOne(id:string): Promise<Movie | undefined>{
         const movieId = Number(id);
         /**if can not cast the id return undefined */
-        if (!Number.isInteger(movieId) || movieId < 1) return Promise.resolve(undefined);
+        if (!Number.isInteger(movieId) || movieId < 1) {
+            return Promise.resolve(undefined);
+        }
         return this.repo.findOne(movieId);
     }
 
-    async findAll(): Promise<Movie[]> {
+    async findAll(): Promise<Movie[] | undefined> {
         return await this.repo.findAll();
     }
 
@@ -21,7 +23,7 @@ export class MovieService {
     async create(input:Omit<Movie, "report"|"id">): Promise<Movie>{
         const movie = new Movie(
             input.id_author,
-            input.path,
+            input.pathF,
             input.tittle,
             input.category,
             input.views,
@@ -42,7 +44,9 @@ export class MovieService {
         ... etc*/
 
         const id_Movie = Number(id);
-        if (!Number.isInteger(id_Movie) || id_Movie < 1) return Promise.resolve(undefined);
+        if (!Number.isInteger(id_Movie) || id_Movie < 1) {
+            return Promise.resolve(undefined);
+        }
         return this.repo.update(id_Movie,input);
     }
 

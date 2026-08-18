@@ -1,6 +1,6 @@
 import { Movie } from "./movie.entity.js";
 import { db } from "../Shared/database/connections.js";
-/*is a function that convet a MovieRow into instance of Movie */
+/*is a function that convert a MovieRow into instance of Movie */
 const toMovie = (row) => new Movie(row.id_author, row.path, row.tittle, row.category, Number(row.views), row.description, Boolean(row.state), undefined, row.id);
 export class MovieRepository {
     async findAll() {
@@ -20,7 +20,7 @@ export class MovieRepository {
         return rows[0] ? toMovie(rows[0]) : undefined;
     }
     async create(item) {
-        const [result] = await db.execute("INSERT INTO movies (id_author,tittle, category, views, description, state) VALUES (?, ?, ?, ?, ?, ?)", [item.id_author, item.tittle, item.category, item.views, item.description, item.state]);
+        const [result] = await db.execute("INSERT INTO movies (id_author,pathF,tittle, category, views, description, state) VALUES (?, ?, ?, ?, ?, ?,?)", [item.id_author, item.pathF, item.tittle, item.category, item.views, item.description, item.state]);
         /**it set the id of the movie that inserted into the table of the database*/
         item.id = result.insertId;
         return item;

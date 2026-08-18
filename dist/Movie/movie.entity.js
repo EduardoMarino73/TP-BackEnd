@@ -1,8 +1,8 @@
 //Movie Object
 export class Movie {
-    constructor(id_author, path, tittle, category, views, description, state, /*---> Maybe a enum is better in this case */ report, id) {
+    constructor(id_author, pathF, tittle, category, views, description, state, /*---> Maybe a enum is better in this case */ report, id) {
         this.id_author = id_author;
-        this.path = path;
+        this.pathF = pathF;
         this.tittle = tittle;
         this.category = category;
         this.views = views;
