@@ -1,4 +1,5 @@
 node_modules/
 Consultas/
-Shared/database/content/
+Shared/database/content/movies
+Shared/database/content/series
 .env
