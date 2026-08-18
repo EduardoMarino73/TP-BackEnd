@@ -8,13 +8,13 @@ export class MovieRepository {
         its like:
         const result = await db.query...
         const rows = result[0]*/
-        const [rows] = await db.query("SELECT id, title, category, views, description, state FROM movies ORDER BY id");
+        const [rows] = await db.query("SELECT id, tittle, category, views, description, state FROM movies ORDER BY id");
         /*map apply a callback function to every item into the array rows*/
         return rows.map(toMovie);
     }
     async findOne(id) {
         /*take the firts parameter*/
-        const [rows] = await db.query("SELECT id, title, category, views, description, state FROM movies WHERE id = ?", [id]);
+        const [rows] = await db.query("SELECT id, tittle, category, views, description, state FROM movies WHERE id = ?", [id]);
         /*ternary operators
         try to return a movie or, insted return undefined */
         return rows[0] ? toMovie(rows[0]) : undefined;
