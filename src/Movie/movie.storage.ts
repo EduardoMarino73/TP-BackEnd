@@ -1,13 +1,12 @@
 import multer from "multer";
-import { moviePath, movieTitle } from "../Shared/database/content.Storage.js";
+import { movieTitle, setMoviePath } from "../Shared/database/content.Storage.js";
 
 class MovieStorage{
     storage = multer.diskStorage({
         destination: function(req,file,cb){
-            cb(null,moviePath)
+            cb(null,setMoviePath(req))
         },
         filename:function(req,file,cb){
-            /**originalname is the name in the uploader´s PC */
             cb(null,movieTitle(req,file.originalname));
         }
     });

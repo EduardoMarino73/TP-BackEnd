@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { MovieRepository } from "./movie.repository.js";
 import { MovieService } from "./movie.service.js";
+import { movieTitle } from "../Shared/database/content.Storage.js";
 
 /*El controlador se va a encargar de manejar la logica del negocio que me permite armar un paquete
 con toda la informacion que voy a tener que devolver al FrontEnd */
@@ -17,7 +18,7 @@ export const findOne = async (req:Request,res:Response) =>{
     const movie = await service.findOne(id_Movie);
 
     if(!movie){
-        return res.sendStatus(404).send({message: "movie not found"});
+        return res.sendStatus(404);
     }
     return res.send({movie});
 }
@@ -35,6 +36,11 @@ export const findOneByPath = async (req:Request,res:Response) => {
 export const create = async (req:Request,res:Response) =>{
     /** log check if anything is wrong */
     const movieInput = req.body.sanitizeMovieInput;
+
+    if (req.file) {
+        movieInput.path = movieTitle(req,req.file.originalname);
+    }
+
     const requiredFields = ["id_author", "title", "views", "description", "state"] as const;
     const missingFields = requiredFields.filter((field) => movieInput[field] === undefined);
 

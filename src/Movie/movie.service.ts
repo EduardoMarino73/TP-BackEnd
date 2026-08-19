@@ -1,6 +1,5 @@
 import { Movie } from "./movie.entity.js";
 import { Repository } from "../Shared/repository.js";
-import fs from "fs";
 import { getMoviePath } from "../Shared/database/content.Storage.js";
 import path from "path";
 
@@ -25,9 +24,6 @@ export class MovieService {
     }
 
     async create(input:Omit<Movie, "report"|"id">): Promise<Movie>{
-
-        /**create the path of the movie */
-        input.path = `/${input.title}`;
 
         const movie = new Movie(
             input.id_author,

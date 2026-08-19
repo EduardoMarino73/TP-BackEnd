@@ -1,1 +1,0 @@
-{"version":3,"file":"reseña.controlador.js","sourceRoot":"","sources":["../../src/reseña/reseña.controlador.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,iBAAiB,EAAE,MAAM,yBAAyB,CAAC;AAE5D,MAAM,WAAW,GAAG,IAAI,iBAAiB,EAAE,CAAA;AAE3C,SAAS,OAAO,CAAC,GAAW,EAAC,GAAY;IACrC,GAAG,CAAC,IAAI,CAAC,EAAC,IAAI,EAAC,WAAW,CAAC,OAAO,EAAE,EAAC,CAAC,CAAA;AAC1C,CAAC;AAED,OAAO,EAAC,OAAO,EAAC,CAAA"}
