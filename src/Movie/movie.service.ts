@@ -19,8 +19,6 @@ export class MovieService {
 
     async create(input:Omit<Movie, "report"|"id">): Promise<Movie>{
 
-        /**create the path of the movie */
-        input.path = `/${input.title}`
 
         const movie = new Movie(
             input.id_author,
