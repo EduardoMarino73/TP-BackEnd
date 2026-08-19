@@ -18,9 +18,14 @@ export class MovieService {
     }
 
     async create(input:Omit<Movie, "report"|"id">): Promise<Movie>{
+
+        /**create the path of the movie */
+        input.path = `/${input.title}`
+
         const movie = new Movie(
+            input.id_author,
             input.path,
-            input.tittle,
+            input.title,
             input.category,
             input.views,
             input.description,
@@ -35,7 +40,7 @@ export class MovieService {
         my id and all the properties like
         
         id,
-        tittle,
+        title,
         category,
         ... etc*/
 

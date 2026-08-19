@@ -15,7 +15,9 @@ export class MovieService {
         return await this.repo.findAll();
     }
     async create(input) {
-        const movie = new Movie(input.path, input.tittle, input.category, input.views, input.description, input.state);
+        /**create the path of the movie */
+        input.path = `/${input.title}`;
+        const movie = new Movie(input.id_author, input.path, input.title, input.category, input.views, input.description, input.state);
         return this.repo.create(movie);
     }
     update(id, input) {
@@ -23,7 +25,7 @@ export class MovieService {
         my id and all the properties like
         
         id,
-        tittle,
+        title,
         category,
         ... etc*/
         const id_Movie = Number(id);

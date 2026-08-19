@@ -1,8 +1,10 @@
 import express from "express";
 import { movieRouter } from "./Movie/movie.routes.js";
+import cors from "cors";
 
 //levanto el Servidor   
 const app = express()
+app.use(cors());
 app.use(express.json());
 
 const PORT = 3000

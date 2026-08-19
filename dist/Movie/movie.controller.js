@@ -16,8 +16,9 @@ export const findOne = async (req, res) => {
     return res.send({ movie });
 };
 export const create = async (req, res) => {
+    /** log check if anything is wrong */
     const movieInput = req.body.sanitizeMovieInput;
-    const requiredFields = ["tittle", "category", "views", "description", "state"];
+    const requiredFields = ["id_author", "title", "views", "description", "state"];
     const missingFields = requiredFields.filter((field) => movieInput[field] === undefined);
     if (missingFields.length > 0) {
         return res.status(400).json({
