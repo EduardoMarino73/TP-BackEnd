@@ -15,6 +15,8 @@ export class MovieService {
         return await this.repo.findAll();
     }
     async create(input) {
+        /**create the path of the movie */
+        input.path = `/${input.title}`;
         const movie = new Movie(input.id_author, input.path, input.title, input.category, input.views, input.description, input.state);
         return this.repo.create(movie);
     }

@@ -3,6 +3,7 @@ import path from "path";
 export const moviePath = "src\\Shared\\database\\content\\movies";
 export const BASE_PATH = "src\\Shared\\database\\content";
 export const movieTitle = (req, file) => {
-    return req.body.tittle + path.extname(file);
+    const data = req.body.data ? JSON.parse(req.body.data) : {};
+    return data.title + path.extname(file);
 };
 //# sourceMappingURL=content.Storage.js.map

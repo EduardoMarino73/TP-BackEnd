@@ -1,4 +1,5 @@
 node_modules/
 Consultas/
+src/Shared/database/content/
 .env
 dist/tsconfig.tsbuildinfo
