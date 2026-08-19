@@ -4,20 +4,18 @@ export class MovieService {
     constructor(repo) {
         this.repo = repo;
     }
-    async findOne(id) {
+    findOne(id) {
+        console.log("the service send the id to the repository");
         const movieId = Number(id);
-        /**if can not cast the id return undefined */
-        if (!Number.isInteger(movieId) || movieId < 1) {
+        if (!Number.isInteger(movieId) || movieId < 1)
             return Promise.resolve(undefined);
-        }
         return this.repo.findOne(movieId);
     }
     async findAll() {
         return await this.repo.findAll();
     }
-    /**this omit the report and id parameters of the instance of Movie */
     async create(input) {
-        const movie = new Movie(input.id_author, input.pathF, input.tittle, input.category, input.views, input.description, input.state);
+        const movie = new Movie(input.id_author, input.path, input.title, input.category, input.views, input.description, input.state);
         return this.repo.create(movie);
     }
     update(id, input) {
@@ -25,13 +23,12 @@ export class MovieService {
         my id and all the properties like
         
         id,
-        tittle,
+        title,
         category,
         ... etc*/
         const id_Movie = Number(id);
-        if (!Number.isInteger(id_Movie) || id_Movie < 1) {
+        if (!Number.isInteger(id_Movie) || id_Movie < 1)
             return Promise.resolve(undefined);
-        }
         return this.repo.update(id_Movie, input);
     }
     remove(id) {

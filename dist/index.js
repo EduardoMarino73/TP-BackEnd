@@ -1,10 +1,10 @@
 import express from "express";
-import cors from "cors";
 import { movieRouter } from "./Movie/movie.routes.js";
+import cors from "cors";
 //levanto el Servidor   
 const app = express();
-app.use(express.json());
 app.use(cors());
+app.use(express.json());
 const PORT = 3000;
 app.listen(PORT, () => {
     console.log(`Server listening at port: ${PORT}`);

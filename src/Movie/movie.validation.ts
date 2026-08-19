@@ -2,9 +2,9 @@ import { NextFunction, Request, Response } from "express";
 
 export const sanitizeMovieInput = (req:Request, res:Response,next:NextFunction) => {
     req.body.sanitizeMovieInput = {
-        id_author:req.body.id_author,
-        pathF:req.file?.path,
-        tittle: req.body.tittle,
+        id_author: req.body.id_author,
+        path: req.file?.path,
+        title: req.body.title,
         category: req.body.category,
         views: req.body.views,
         description: req.body.description,

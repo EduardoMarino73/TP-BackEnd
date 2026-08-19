@@ -6,20 +6,25 @@ import { Repository } from "../Shared/repository.js";
 /*represent a table in the movies table */
 type MovieRow = RowDataPacket & {
     id: number;
-    id_author:bigint;
-    pathF:string;
-    titte: string;
+    id_author: number;
+    path: string;
+    title: string;
     category: string;
     views: number;
     description: string;
     state: number;
 };
 
-/*is a function that convert a MovieRow into instance of Movie */
+export type DTO_Movie = {
+    id: number;
+    title: string;
+}
+
+/*is a function that convet a MovieRow into instance of Movie */
 const toMovie = (row: MovieRow): Movie => new Movie(
     row.id_author,
     row.path,
-    row.tittle,
+    row.title,
     row.category,
     Number(row.views),
     row.description,
@@ -30,13 +35,13 @@ const toMovie = (row: MovieRow): Movie => new Movie(
 
 export class MovieRepository implements Repository<Movie> {
 
-    async findAll(): Promise<Movie[] | undefined> {
+    async findAll(): Promise<Movie[]> {
         /* the [rows] only take the firts parameter of the return
         its like:
         const result = await db.query...
         const rows = result[0]*/
         const [rows] = await db.query<MovieRow[]>(
-            "SELECT id, id_author, tittle, category, views, description, state FROM movies ORDER BY id",
+            "SELECT id, id_author, path, title, category, views, description, state FROM movies ORDER BY id",
         );
         /*map apply a callback function to every item into the array rows*/
         return rows.map(toMovie);
@@ -45,7 +50,7 @@ export class MovieRepository implements Repository<Movie> {
     async findOne(id: number): Promise<Movie | undefined> {
         /*take the firts parameter*/
         const [rows] = await db.query<MovieRow[]>(
-            "SELECT id, id_author, tittle, category, views, description, state FROM movies WHERE id = ?",
+            "SELECT id, id_author, path, title, category, views, description, state FROM movies WHERE id = ?",
             [id],
         );
         /*ternary operators
@@ -55,8 +60,8 @@ export class MovieRepository implements Repository<Movie> {
 
     async create(item: Movie): Promise<Movie> {
         const [result] = await db.execute<ResultSetHeader>(
-            "INSERT INTO movies (id_author,pathF,tittle, category, views, description, state) VALUES (?, ?, ?, ?, ?, ?,?)",
-            [item.id_author, item.pathF, item.tittle, item.category, item.views, item.description, item.state],
+            "INSERT INTO movies (id_author, path, title, category, views, description, state) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [item.id_author, item.path, item.title, item.category, item.views, item.description, item.state],
         );
         /**it set the id of the movie that inserted into the table of the database*/
         item.id = result.insertId;
@@ -64,7 +69,7 @@ export class MovieRepository implements Repository<Movie> {
     }
 
     async update(id:number,input: Partial<Movie>): Promise<Movie | undefined> {
-        const allowedFields = ["tittle", "category", "views", "description", "state"] as const;
+        const allowedFields = ["id_author", "path", "title", "category", "views", "description", "state"] as const;
         const fields = allowedFields.filter((field) => input[field] !== undefined);
         if (fields.length === 0) return this.findOne(id);
         

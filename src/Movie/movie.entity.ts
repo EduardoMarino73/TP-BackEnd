@@ -1,12 +1,12 @@
 import { Report_type } from "../Report_Type/report_type.entity.js";
 
-//Movie Object
+//objeto que me va a representar a una pelicula durante la ejecucion
 export class Movie {
  
     constructor(
-        public id_author:bigint,
-        public pathF:string,
-        public tittle:string,
+        public id_author:number,
+        public path:string,
+        public title:string,
         public category:string,
         public views:number,
         public description:string,

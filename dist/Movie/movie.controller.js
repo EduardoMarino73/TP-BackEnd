@@ -1,10 +1,8 @@
 import { MovieRepository } from "./movie.repository.js";
 import { MovieService } from "./movie.service.js";
+/*El controlador se va a encargar de manejar la logica del negocio que me permite armar un paquete
+con toda la informacion que voy a tener que devolver al FrontEnd */
 const service = new MovieService(new MovieRepository());
-/**tengo que acordarme de decirles a los chicos que no se puede enviar la informacion de la pelicula/episodio y el archivo al mismo tiempo
- * tendremos que implementar una forma de primero enviar los datos de la base de datos y luego pedir el archivo propiamente a la base de
- * datos(estoy pensando en que se puede enviar el pathF dentro de req.params para eso) y ahi recien enviar el archivo
- */
 export const findAll = async (req, res) => {
     res.json(await service.findAll());
 };
@@ -19,7 +17,7 @@ export const findOne = async (req, res) => {
 };
 export const create = async (req, res) => {
     const movieInput = req.body.sanitizeMovieInput;
-    const requiredFields = ["id_author", "pathF", "tittle", "category", "views", "description", "state"];
+    const requiredFields = ["id_author", "path", "title", "views", "description", "state"];
     const missingFields = requiredFields.filter((field) => movieInput[field] === undefined);
     if (missingFields.length > 0) {
         return res.status(400).json({

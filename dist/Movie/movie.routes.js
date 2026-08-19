@@ -7,7 +7,7 @@ mis peliculas. Logrando asi invocar al metodo necesario en cada caso*/
 export const movieRouter = Router();
 movieRouter.get('/', findAll);
 movieRouter.get('/:id', findOne);
-movieRouter.post('/', movieStorage.download.single('movie'), sanitizeMovieInput, create);
+movieRouter.post('/', movieStorage.download.single('archivo'), sanitizeMovieInput, create);
 movieRouter.put('/:id', sanitizeMovieInput, update);
 movieRouter.patch('/:id', sanitizeMovieInput, update);
 movieRouter.delete('/:id', remove);

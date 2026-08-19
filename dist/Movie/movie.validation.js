@@ -1,8 +1,8 @@
 export const sanitizeMovieInput = (req, res, next) => {
     req.body.sanitizeMovieInput = {
         id_author: req.body.id_author,
-        pathF: req.file?.path,
-        tittle: req.body.tittle,
+        path: req.file?.path,
+        title: req.body.title,
         category: req.body.category,
         views: req.body.views,
         description: req.body.description,

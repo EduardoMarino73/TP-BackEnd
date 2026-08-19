@@ -1,5 +1,5 @@
 import multer from "multer";
-import { moviePath, movieTittle } from "../Shared/database/content/content.Storage.js";
+import { moviePath, movieTitle } from "../Shared/database/content.Storage.js";
 
 class MovieStorage{
     storage = multer.diskStorage({
@@ -8,7 +8,7 @@ class MovieStorage{
         },
         filename:function(req,file,cb){
             /**originalname is the name in the uploader´s PC */
-            cb(null,movieTittle(req,file.originalname));
+            cb(null,movieTitle(req,file.originalname));
         }
     });
 
