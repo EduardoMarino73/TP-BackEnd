@@ -1,10 +1,17 @@
 import { Movie } from "./movie.entity.js";
 import { Repository } from "../Shared/repository.js";
+import fs from "fs";
+import { getMoviePath } from "../Shared/database/content.Storage.js";
+import path from "path";
 
 /*Here is where Im going to do all the bussines logic, like create a new movie or find one movie of the dbb*/
 
 export class MovieService {
     public constructor(private repo: Repository<Movie>){}
+
+    async findAll(): Promise<Movie[]> {
+        return await this.repo.findAll();
+    }
 
     findOne(id:string): Promise<Movie | undefined>{
         console.log("the service send the id to the repository");
@@ -13,14 +20,14 @@ export class MovieService {
         return this.repo.findOne(movieId);
     }
 
-    async findAll(): Promise<Movie[]> {
-        return await this.repo.findAll();
+    async findOneByPath(moviePath:string): Promise<string> {
+        return path.resolve(getMoviePath(moviePath));
     }
 
     async create(input:Omit<Movie, "report"|"id">): Promise<Movie>{
 
         /**create the path of the movie */
-        input.path = `/${input.title}`
+        input.path = `/${input.title}`;
 
         const movie = new Movie(
             input.id_author,

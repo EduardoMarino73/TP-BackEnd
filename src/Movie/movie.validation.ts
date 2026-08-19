@@ -1,5 +1,19 @@
 import { NextFunction, Request, Response } from "express";
 
+export const sanitizeMoviePathInput = (req:Request,res:Response,next:NextFunction) => {
+    const data = req.body.data ? JSON.parse(req.body.data) : {};
+
+    req.body.sanitizeMoviePathInput = {
+        path: data.path
+    }
+
+    if(req.body.sanitizeMoviePathInput.path === undefined) {
+        delete req.body.sanitizeMoviePathInput.path;
+    }
+
+    next()
+}
+
 export const sanitizeMovieInput = (req:Request, res:Response,next:NextFunction) => {
     /**if true parse the Json, else data is an empty object */
     const data = req.body.data ? JSON.parse(req.body.data) : {};

@@ -22,6 +22,16 @@ export const findOne = async (req:Request,res:Response) =>{
     return res.send({movie});
 }
 
+export const findOneByPath = async (req:Request,res:Response) => {
+
+    if(req.body.sanitizeMoviePathInput.path === undefined){
+        res.send({message:"the path is undefined"})
+    }
+
+    const filePath = await service.findOneByPath(req.body.sanitizeMoviePathInput.path as string)
+    return res.sendFile(filePath);
+}
+
 export const create = async (req:Request,res:Response) =>{
     /** log check if anything is wrong */
     const movieInput = req.body.sanitizeMovieInput;

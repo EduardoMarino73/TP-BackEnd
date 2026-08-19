@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { findAll,findOne,create,update,remove } from "./movie.controller.js";
-import { sanitizeMovieInput } from "./movie.validation.js";
+import { findAll,findOne,findOneByPath,create,update,remove } from "./movie.controller.js";
+import { sanitizeMovieInput, sanitizeMoviePathInput } from "./movie.validation.js";
 import movieStorage from "./movie.storage.js";
 
 /*EL router de peliculas se va a encargar de manejar todas las peticiones relacionadas con 
@@ -10,6 +10,7 @@ export const movieRouter = Router()
 
 movieRouter.get('/',findAll)
 movieRouter.get('/:id',findOne)
+movieRouter.get('/:path',sanitizeMoviePathInput,findOneByPath)
 movieRouter.post('/',movieStorage.download.single('archivo'),sanitizeMovieInput,create)
 movieRouter.put('/:id',sanitizeMovieInput,update)
 movieRouter.patch('/:id',sanitizeMovieInput,update)
