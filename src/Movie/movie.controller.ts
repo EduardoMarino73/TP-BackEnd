@@ -23,8 +23,14 @@ export const findOne = async (req:Request,res:Response) =>{
 }
 
 export const create = async (req:Request,res:Response) =>{
+    /** log check if anything is wrong */
     const movieInput = req.body.sanitizeMovieInput;
-    const requiredFields = ["tittle", "category", "views", "description", "state"] as const;
+
+    if (req.file) {
+        movieInput.path = `/movies/${req.file.filename}`;
+    }
+
+    const requiredFields = ["id_author", "title", "views", "description", "state"] as const;
     const missingFields = requiredFields.filter((field) => movieInput[field] === undefined);
 
     if (missingFields.length > 0) {

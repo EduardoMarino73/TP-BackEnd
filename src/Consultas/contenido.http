@@ -8,8 +8,9 @@ POST http://localhost:3000/api/movie
 Content-Type: application/json
 
 {
+  "id_author": 2,
   "path": "asd",
-  "tittle": "Back to the Future",
+  "title": "Back to the Future",
   "category": "fiction",
   "views": 0,
   "description": "very good",
