@@ -1,12 +1,13 @@
 import { NextFunction, Request, Response } from "express";
 
 export const sanitizeMovieInput = (req:Request, res:Response,next:NextFunction) => {
-    /**if true parse the Json, else data is an empty object */
-    const data = req.body.data ? JSON.parse(req.body.data) : {};
+
+    // cuando viene CON archivo de video (porejemplo en UploadPage): el JSON viaja como string adentro de req.body.data
+    // cuando viene SIN archivo de video (por ejem en MisVideosPage): req.body ya trae los campos directamente
+    const data = req.body.data ? JSON.parse(req.body.data) : req.body;
 
     req.body.sanitizeMovieInput = {
         id_author: data.id_author,
-        path: "",
         title: data.title,
         category: data.category,
         views: data.views,
