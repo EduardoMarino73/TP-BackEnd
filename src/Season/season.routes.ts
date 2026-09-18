@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { findAll } from "./season.controller.js";
 
-export const temporadaRouter = Router()
+export const seasonRouter = Router()
 
-temporadaRouter.get('/',findAll)
+seasonRouter.get('/',findAll)

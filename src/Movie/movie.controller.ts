@@ -4,8 +4,8 @@ import { MovieService } from "./movie.service.js";
 import fs from "fs";
 import path from "path";
 
-/*El controlador se va a encargar de manejar la logica del negocio que me permite armar un paquete
-con toda la informacion que voy a tener que devolver al FrontEnd */
+/*The controller takes care of handling the business logic that lets us put together a package
+with all the information we need to return to the FrontEnd */
 
 const service = new MovieService(new MovieRepository());
 
@@ -48,7 +48,7 @@ export const create = async (req:Request,res:Response) =>{
 
 export const update = async (req:Request,res:Response) =>{
     const id_Movie = req.params.id as string;
-    /* "req.body.sanitizeMovieInput" is a callback that clear all the undefined params of my movie object */
+    /* "req.body.sanitizeMovieInput" is a callback that clears all the undefined params of my movie object */
     const movie = await service.update(id_Movie,req.body.sanitizeMovieInput);
 
     if(!movie){
@@ -69,7 +69,7 @@ export const remove = async (req:Request,res:Response) => {
 
 
 /*
-MATERIAL ÚTIL PARA ENTENDER MEJOR LA FUNCIÓN streamMovie:
+USEFUL MATERIAL TO BETTER UNDERSTAND THE streamMovie FUNCTION:
 fs Module: https://www.youtube.com/watch?v=Z_p1yFGS0Ak
 Streams: https://www.youtube.com/watch?v=qnzC6vpBuxw
 Pipes: https://www.youtube.com/watch?v=ej79ByltLOI
@@ -81,18 +81,18 @@ export async function streamMovie(req: Request, res: Response) {
         return res.status(400).json({ message: "invalid movie id" });
     }
 
-// busca la pelicula en la base de datos por id
+// look up the movie in the database by id
     const movie = await service.findOne(movieId.toString()); 
     if (!movie) {
         return res.status(404).json({ message: "movie not found" });
     }
 
-    // movie.path se guarda como "/movies/167123-xyz.mp4"
-    // lo convierte a la ubicación real del archivo en el disco
+    // movie.path is stored as "/movies/167123-xyz.mp4"
+    // convert it to the file's actual location on disk
     const fileName = path.basename(movie.path);
     const filePath = path.resolve("src/Shared/database/content/movies", fileName);
 
-    //intenta leer los metadatos del archivo de forma sincrona. Si el archivo se borró o no existe en esa ruta, agarra la excepción y devuelve un 404
+    //try to read the file metadata synchronously. If the file was deleted or doesn't exist at that path, catch the exception and return a 404
     let stat: fs.Stats;
     try {
         stat = fs.statSync(filePath);
@@ -101,30 +101,30 @@ export async function streamMovie(req: Request, res: Response) {
     }
 
 
-    const fileSize = stat.size; // guarda el tamaño total del archivo en bytes
-    const range = req.headers.range; //lee la cabecera HTTPRange que envia el navegador (en bytes)
+    const fileSize = stat.size; // stores the total file size in bytes
+    const range = req.headers.range; //reads the HTTP Range header sent by the browser (in bytes)
 
-    // si el navegador no especifica un RANGE: enviamos todo (es raro que pase)
+    // if the browser doesn't specify a RANGE: we send everything (this rarely happens)
     if (!range) {
-        res.writeHead(200, { // 200 es el codigo de ok
-            "Content-Length": fileSize, //informamos el tamaño total
-            "Content-Type": "video/mp4", //el tipo de archivo
-            "Accept-Ranges": "bytes", //informamos que aceptamos peticiones por rango de bytes
+        res.writeHead(200, { // 200 is the ok status code
+            "Content-Length": fileSize, //report the total size
+            "Content-Type": "video/mp4", //the file type
+            "Accept-Ranges": "bytes", //let the client know we accept byte-range requests
         });
-        fs.createReadStream(filePath).pipe(res); //crea un stream de lectura del archivo con .createReadStream(filePath) y lo envia al navegador .pipe(res)
+        fs.createReadStream(filePath).pipe(res); //create a read stream from the file with .createReadStream(filePath) and send it to the browser with .pipe(res)
         return;
     }
 
     // Parse "bytes=START-END"
     const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB per chunk as a cap
-    const [startStr, endStr] = range.replace(/bytes=/, "") //saca el prefijo "bytes=", dejando "1000-2000".
-    .split("-");  // separa en ["1000", "2000"].
-    const start = parseInt(startStr, 10); //el byte de donde empezamos
+    const [startStr, endStr] = range.replace(/bytes=/, "") //strip the "bytes=" prefix, leaving "1000-2000".
+    .split("-");  // split into ["1000", "2000"].
+    const start = parseInt(startStr, 10); //the byte we start from
     const end = endStr 
-        ? Math.min(parseInt(endStr, 10), fileSize - 1) //si el navegador especifico un final (endStr existe), usamos ese, pero nunca mas lejos del tamaño real del archivo (Math.min(..., fileSize - 1))
-        : Math.min(start + CHUNK_SIZE, fileSize - 1); //si no especificó final, nosotros ponemos un tope de CHUNK_SIZE (5MB) para no mandar de más de una, así forzamos que el video se transmita en pedazos manejables en vez de mandar "desde el byte 1000 hasta el final" de un solo golpe
+        ? Math.min(parseInt(endStr, 10), fileSize - 1) //if the browser specified an end (endStr exists), use it, but never further than the actual file size (Math.min(..., fileSize - 1))
+        : Math.min(start + CHUNK_SIZE, fileSize - 1); //if no end was specified, we cap it at CHUNK_SIZE (5MB) so we don't send too much at once, forcing the video to stream in manageable pieces instead of sending "from byte 1000 to the end" all at once
 
-    // si alguien pide un rango absurdo (tipo "bytes=1000000000-1000000001" cuando el archivo tiene 10MB), devolvemos un 416 (range not satisfiable)
+    // if someone asks for an absurd range (e.g. "bytes=1000000000-1000000001" when the file is 10MB), we return a 416 (range not satisfiable)
     if (start >= fileSize || start > end) {
         res.writeHead(416, { "Content-Range": `bytes */${fileSize}` });
         return res.end();
@@ -132,17 +132,17 @@ export async function streamMovie(req: Request, res: Response) {
 
     const contentLength = end - start + 1;
 
-    res.writeHead(206, {  // 206 (Partial Content) es el código HTTP que le dice al navegador "esto que te mando NO es el archivo completo, es un pedazo". Es distinto de 200, y es lo que le permite al <video> entender que puede seguir pidiendo más pedazos
-        "Content-Range": `bytes ${start}-${end}/${fileSize}`, //le decimos al navegador qué pedazo le estamos mandando en relación al tamaño total del archivo
-        "Accept-Ranges": "bytes", //le decimos que aceptamos peticiones por rango de bytes
-        "Content-Length": contentLength, //el tamaño de este pedazo (no del archivo completo)
+    res.writeHead(206, {  // 206 (Partial Content) is the HTTP code that tells the browser "what I'm sending you is NOT the full file, it's a chunk". It's different from 200, and it's what lets the <video> element understand it can keep requesting more chunks
+        "Content-Range": `bytes ${start}-${end}/${fileSize}`, //tell the browser which chunk we're sending relative to the total file size
+        "Accept-Ranges": "bytes", //let it know we accept byte-range requests
+        "Content-Length": contentLength, //the size of this chunk (not the whole file)
         "Content-Type": "video/mp4", 
     });
 
-    const stream = fs.createReadStream(filePath, { start, end }); //aca la diferencia clave con el "fs.createRedStream" anterior es que le pasamos start y end para que Node lea solo esa porción del archivo del disco. O sea node abre el archivo, se salta el byte hasta "start" y va leyendo hasta "end", y lo va enviando al navegador a medida que lo lee.Esto hace que el video se transmita en pedazos y no se tenga que cargar todo de golpe.
+    const stream = fs.createReadStream(filePath, { start, end }); //the key difference from the earlier "fs.createReadStream" is that we pass start and end so Node reads only that portion of the file from disk. Node opens the file, skips ahead to "start" and reads through "end", sending it to the browser as it reads. This makes the video stream in chunks instead of having to be loaded all at once.
     stream.pipe(res);
 
-    //si algo sale mal mientras se lee el archivo, cerramos la coonexion con el cliente en vez de dejada colgada esperando algo que nunca va a llegar
+    //if something goes wrong while reading the file, close the connection with the client instead of leaving it hanging waiting for something that will never arrive
     stream.on("error", () => {
         res.destroy();
     });

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { findAll } from "./complaint.controller.js";
 
-const denunciaRouter = Router()
+const complaintRouter = Router()
 
-denunciaRouter.get('/',findAll)
+complaintRouter.get('/',findAll)

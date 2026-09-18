@@ -1,11 +1,11 @@
--- Crear la base de datos si no existe y seleccionar el conjunto de caracteres
-CREATE DATABASE IF NOT EXISTS cinebd
+-- Create the database if it doesn't exist and select the character set
+CREATE DATABASE IF NOT EXISTS cinedb
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
-USE cinebd;
+USE cinedb;
 
--- Crear la tabla de películas
+-- Create the movies table
 CREATE TABLE IF NOT EXISTS movies (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,

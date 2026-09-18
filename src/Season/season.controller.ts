@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
-import { TemporadaRepositorio } from "./season.repository.js";
+import { SeasonRepository } from "./season.repository.js";
 
 
-const repositorio = new TemporadaRepositorio()
+const repository = new SeasonRepository()
 
 function findAll(req:Request,res:Response){
-    res.json({data:repositorio.findAll()})
+    res.json({data:repository.findAll()})
 }
 
 export {findAll}

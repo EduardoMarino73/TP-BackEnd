@@ -1,4 +1,4 @@
-/*Obejto que me representa a un episodio durante la ejecucion */
-export class Episodie {
+/* Object that represents an episode during execution */
+export class Episode {
 
 }

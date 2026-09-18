@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import { EpisodieRepository } from "./episode.repository.js";
+import { EpisodeRepository } from "./episode.repository.js";
 
-const repositorio = new EpisodieRepository()
+const repository = new EpisodeRepository()
 
 function findAll(req:Request,res:Response){
-    res.json({data:repositorio.findAll()})
+    res.json({data:repository.findAll()})
 }

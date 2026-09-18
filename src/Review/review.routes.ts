@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { findAll } from "./review.controller.js";
 
-const reseñaRouter = Router()
+const reviewRouter = Router()
 
-reseñaRouter.get('/',findAll)
+reviewRouter.get('/',findAll)

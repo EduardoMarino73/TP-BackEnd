@@ -1,6 +1,6 @@
-import { Report_type } from "../Report_Type/report_type.entity.js";
+import { ReportType } from "../Report_Type/report_type.entity.js";
 
-//objeto que me va a representar a una pelicula durante la ejecucion
+//object that represents a movie during execution
 export class Movie {
  
     constructor(
@@ -10,8 +10,8 @@ export class Movie {
         public category:string,
         public views:number,
         public description:string,
-        public state:boolean, /*---> Maybe a enum is better in this case */
-        public report?:Report_type[],
+        public state:boolean, /*---> Maybe an enum is better in this case */
+        public report?:ReportType[],
         public id?:number
         ){}
 }

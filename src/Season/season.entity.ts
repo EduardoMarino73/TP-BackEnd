@@ -1,4 +1,4 @@
-/*Objeto que me representa una temporada en tiempo de ejecucion*/
+/* Object that represents a season during execution */
 
 export class Season {
     

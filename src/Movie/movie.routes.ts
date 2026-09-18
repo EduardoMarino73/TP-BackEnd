@@ -3,8 +3,8 @@ import { findAll,findOne,create,update,remove, streamMovie } from "./movie.contr
 import { sanitizeMovieInput } from "./movie.validation.js";
 import movieStorage from "./movie.storage.js";
 
-/*EL router de peliculas se va a encargar de manejar todas las peticiones relacionadas con 
-mis peliculas. Logrando asi invocar al metodo necesario en cada caso*/
+/*The movie router handles all the requests related to
+our movies, invoking the necessary method in each case*/
 
 export const movieRouter = Router()
 

@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
-import { Report_TypeRepository } from "./report_type.repository.js";
+import { ReportTypeRepository } from "./report_type.repository.js";
 
-const repositorio = new Report_TypeRepository()
+const repository = new ReportTypeRepository()
 
 function findAll(req:Request,res:Response){
-    res.json({data:repositorio.findAll()})
+    res.json({data:repository.findAll()})
 }
 
 export{findAll}

@@ -1,24 +1,24 @@
 import { Repository } from "../Shared/repository.js";
-import { Episodie } from "./episode.entity.js";
+import { Episode } from "./episode.entity.js";
 
-/*episodio.repositorio es el DAO.
-Se va a encargar de buscar o guardar los episodios con los que tenga que trabajar*/
+/*episode.repository is the DAO.
+It's in charge of finding or saving the episodes it needs to work with*/
 
-export class EpisodieRepository implements Repository<Episodie> {
+export class EpisodeRepository implements Repository<Episode> {
 
-    /*De forma analoga hacemos lo mismo que en el repositorio de peliculas, definiendo el comportamiento 
-    especifico de los metodos generales que obtengo del contrato de la interfaz */
+    /*In a similar way, we do the same thing as in the movie repository, defining the
+    specific behavior of the general methods we get from the interface contract */
 
-    async findAll(): Promise<Episodie[]> {
+    async findAll(): Promise<Episode[]> {
         throw new Error("Method not implemented.");
     }
-    async findOne(id: number): Promise<Episodie | undefined> {
+    async findOne(id: number): Promise<Episode | undefined> {
         throw new Error("Method not implemented.");
     }
-    async create(item: Episodie): Promise<Episodie> {
+    async create(item: Episode): Promise<Episode> {
         throw new Error("Method not implemented.");
     }
-    async update(id: number, input: Partial<Episodie>): Promise<Episodie | undefined> {
+    async update(id: number, input: Partial<Episode>): Promise<Episode | undefined> {
         throw new Error("Method not implemented.");
     }
     async delete(id: number): Promise<boolean> {

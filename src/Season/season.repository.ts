@@ -1,7 +1,7 @@
 import { Repository } from "../Shared/repository.js";
 import { Season } from "./season.entity.js";
 
-export class TemporadaRepositorio implements Repository<Season> {
+export class SeasonRepository implements Repository<Season> {
     
     async findAll(): Promise<Season[]> {
         throw new Error("Method not implemented.");

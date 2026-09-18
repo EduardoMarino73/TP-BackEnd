@@ -3,7 +3,7 @@ import { movieRouter } from "./Movie/movie.routes.js";
 import cors from "cors";
 import path from "path";
 
-//levanto el Servidor   
+//start the server
 const app = express()
 app.use(cors());
 app.use(express.json());
@@ -20,5 +20,4 @@ app.use('/api/movie',movieRouter)
 app.use((_,res) => {
     return res.status(404).send({message: "source not found "});
 })
-
 
