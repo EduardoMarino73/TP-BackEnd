@@ -58,3 +58,20 @@ CREATE TABLE IF NOT EXISTS episodes (
     UNIQUE KEY uq_season_episode (id_season, episode_number)
 ) ENGINE=InnoDB;
 
+-- Viewer ratings for movies and episodes. audiovisual_type disambiguates IDs,
+-- since each content table currently has its own auto-increment sequence.
+-- viewer_id points to the viewer/user identity from the domain model; this
+-- project does not yet define a users table to reference with a foreign key.
+CREATE TABLE IF NOT EXISTS reviews (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    viewer_id INT NOT NULL,
+    rating BOOLEAN NOT NULL,
+    audiovisual_id INT NOT NULL,
+    audiovisual_type ENUM('movie', 'episode') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_review_viewer_audiovisual (viewer_id, audiovisual_type, audiovisual_id),
+    INDEX idx_reviews_audiovisual (audiovisual_type, audiovisual_id),
+    INDEX idx_reviews_viewer (viewer_id)
+) ENGINE=InnoDB;
+
