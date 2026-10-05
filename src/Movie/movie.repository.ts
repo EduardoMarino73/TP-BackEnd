@@ -12,7 +12,7 @@ type MovieRow = RowDataPacket & {
     category: string;
     views: number;
     description: string;
-    state: number;
+    state: string;
 };
 
 export type DTO_Movie = {
@@ -28,7 +28,7 @@ const toMovie = (row: MovieRow): Movie => new Movie(
     row.category,
     Number(row.views),
     row.description,
-    Boolean(row.state),
+    row.state,
     undefined,
     row.id,
 );
