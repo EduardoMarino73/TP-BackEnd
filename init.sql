@@ -1,9 +1,9 @@
 -- Create the database if it doesn't exist and select the character set
-CREATE DATABASE IF NOT EXISTS cinedb
+CREATE DATABASE IF NOT EXISTS che_netflix
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
-USE cinedb;
+USE che_netflix;
 
 -- Create the movies table
 CREATE TABLE IF NOT EXISTS movies (

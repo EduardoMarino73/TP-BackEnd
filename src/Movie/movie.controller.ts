@@ -3,6 +3,7 @@ import { MovieRepository } from "./movie.repository.js";
 import { MovieService } from "./movie.service.js";
 import fs from "fs";
 import path from "path";
+import { movieTitle } from "../Shared/database/content.Storage.js";
 
 /*The controller takes care of handling the business logic that lets us put together a package
 with all the information we need to return to the FrontEnd */
@@ -19,9 +20,19 @@ export const findOne = async (req:Request,res:Response) =>{
     const movie = await service.findOne(id_Movie);
 
     if(!movie){
-        return res.sendStatus(404).send({message: "movie not found"});
+        return res.sendStatus(404);
     }
     return res.send({movie});
+}
+
+export const findOneByPath = async (req:Request,res:Response) => {
+
+    if(req.body.sanitizeMoviePathInput.path === undefined){
+        res.send({message:"the path is undefined"})
+    }
+
+    const filePath = await service.findOneByPath(req.body.sanitizeMoviePathInput.path as string)
+    return res.sendFile(filePath);
 }
 
 export const create = async (req:Request,res:Response) =>{
@@ -29,7 +40,7 @@ export const create = async (req:Request,res:Response) =>{
     const movieInput = req.body.sanitizeMovieInput;
 
     if (req.file) {
-        movieInput.path = `/movies/${req.file.filename}`;
+        movieInput.path = movieTitle(req,req.file.originalname);
     }
 
     const requiredFields = ["id_author", "title", "views", "description", "state"] as const;
