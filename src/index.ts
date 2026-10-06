@@ -5,6 +5,7 @@ import { seasonRouter } from "./Season/season.routes.js";
 import { episodeRouter } from "./Episode/episode.routes.js";
 import cors from "cors";
 import path from "path";
+import { reviewRouter } from "./Review/review.routes.js";
 
 //start the server
 const app = express()
@@ -24,3 +25,15 @@ app.listen(PORT, () => {
     console.log(`Server listening at port: ${PORT}`);
 });
 
+// Register REST API routers
+app.use("/api/movie", movieRouter);
+app.use("/api/series", seriesRouter);
+app.use("/api/seasons", seasonRouter);
+app.use("/api/episodes", episodeRouter);
+// Exposes review operations under /api/reviews.
+app.use("/api/reviews", reviewRouter);
+
+// Fallback 404 handler for unrecognized routes
+app.use((_, res) => {
+    return res.status(404).send({ message: "source not found " });
+});
