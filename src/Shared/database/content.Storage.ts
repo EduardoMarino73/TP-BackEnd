@@ -1,9 +1,17 @@
 import { Request } from "express";
 import path from "path"
+import fs from "fs"
 
 /**the path where save movies */
-export const moviePath = "src\\Shared\\database\\content\\movies";
-export const BASE_PATH = "src\\Shared\\database\\content";
+export const BASE_PATH = path.resolve("src", "Shared", "database", "content");
+export const moviePath = path.join(BASE_PATH, "movies");
+export const seriesPath = path.join(BASE_PATH, "series");
+ 
+// create the folders if dont exist
+[moviePath, seriesPath].forEach((dir) => {
+    fs.mkdirSync(dir, { recursive: true });
+});
+
 
 export const movieTitle = (req:Request,file:string): string => {
     const data = req.body.data ? JSON.parse(req.body.data) : {};

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { findAll,findOne,create,update,remove } from "./movie.controller.js";
+import { findAll,findOne,create,update,remove, streamMovie } from "./movie.controller.js";
 import { sanitizeMovieInput } from "./movie.validation.js";
 import movieStorage from "./movie.storage.js";
 
@@ -10,6 +10,7 @@ export const movieRouter = Router()
 
 movieRouter.get('/',findAll)
 movieRouter.get('/:id',findOne)
+movieRouter.get('/:id/stream', streamMovie)
 movieRouter.post('/',movieStorage.download.single('archivo'),sanitizeMovieInput,create)
 movieRouter.put('/:id',sanitizeMovieInput,update)
 movieRouter.patch('/:id',sanitizeMovieInput,update)
