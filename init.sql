@@ -1,9 +1,23 @@
+-- CineWeb database schema.
+-- Run it with: mysql -u root -p < init.sql
+-- The database name must match MYSQL_DATABASE in .env (see .env.example).
+
 -- Create the database if it doesn't exist and select the character set
 CREATE DATABASE IF NOT EXISTS che_netflix
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
 USE che_netflix;
+
+-- OPTIONAL RESET: "CREATE TABLE IF NOT EXISTS" does not update a table that
+-- already exists. If your tables were created with an older version of this
+-- script (e.g. a missing column causes a 500 error), uncomment these lines
+-- to drop them and create them again. WARNING: this deletes their data.
+-- DROP TABLE IF EXISTS reviews;
+-- DROP TABLE IF EXISTS episodes;
+-- DROP TABLE IF EXISTS seasons;
+-- DROP TABLE IF EXISTS series;
+-- DROP TABLE IF EXISTS movies;
 
 -- Create the movies table
 CREATE TABLE IF NOT EXISTS movies (
