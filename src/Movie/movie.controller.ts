@@ -3,7 +3,6 @@ import { MovieRepository } from "./movie.repository.js";
 import { MovieService } from "./movie.service.js";
 import fs from "fs";
 import path from "path";
-import { movieTitle } from "../Shared/database/content.Storage.js";
 
 /*The controller takes care of handling the business logic that lets us put together a package
 with all the information we need to return to the FrontEnd */
@@ -40,7 +39,8 @@ export const create = async (req:Request,res:Response) =>{
     const movieInput = req.body.sanitizeMovieInput;
 
     if (req.file) {
-        movieInput.path = movieTitle(req,req.file.originalname);
+        // use the exact filename multer saved on disk, so the DB path always matches the real file
+        movieInput.path = `/movies/${req.file.filename}`;
     }
 
     const requiredFields = ["id_author", "title", "views", "description", "state"] as const;

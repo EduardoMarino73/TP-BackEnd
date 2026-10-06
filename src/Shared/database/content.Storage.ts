@@ -13,10 +13,24 @@ export const episodePath = path.join(BASE_PATH, "series");
 });
 
 
-export const movieTitle = (req:Request,file:string): string => {
+/** Builds a safe filename from the title sent in req.body.data, keeping the original file extension only once */
+const buildFileName = (req:Request, file:string): string => {
     const data = req.body.data ? JSON.parse(req.body.data) : {};
-    return data.title + path.extname(file);
+    const ext = path.extname(file).toLowerCase();
+    let title = String(data.title ?? path.basename(file, path.extname(file))).trim();
+
+    // if the title already ends with the extension (e.g. "title.mp4") remove it to avoid "title.mp4.mp4"
+    if (ext && title.toLowerCase().endsWith(ext)) {
+        title = title.slice(0, -ext.length);
+    }
+
+    // replace characters that are invalid in filenames or break URLs (spaces, / \ : * ? " < > | # %)
+    title = title.replace(/[\\/:*?"<>|#%]/g, "").replace(/\s+/g, "_");
+
+    return title + ext;
 }
+
+export const movieTitle = (req:Request,file:string): string => buildFileName(req, file);
 
 export const setMoviePath = (req:Request) => {
     /**set the movie directory for save the files */
@@ -30,10 +44,7 @@ export const setMoviePath = (req:Request) => {
 }
 
 /** Returns the filename used to store an uploaded episode video. */
-export const episodeTitle = (req: Request, file: string): string => {
-    const data = req.body.data ? JSON.parse(req.body.data) : {};
-    return data.title + path.extname(file);
-}
+export const episodeTitle = (req: Request, file: string): string => buildFileName(req, file);
 
 /** Creates and returns the directory used to store episode videos. */
 export const setEpisodePath = (_req: Request) => {
