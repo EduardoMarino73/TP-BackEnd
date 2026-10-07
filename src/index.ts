@@ -1,24 +1,39 @@
 import express from "express";
 import { movieRouter } from "./Movie/movie.routes.js";
+import { seriesRouter } from "./Series/series.routes.js";
+import { seasonRouter } from "./Season/season.routes.js";
+import { episodeRouter } from "./Episode/episode.routes.js";
 import cors from "cors";
 import path from "path";
+import { reviewRouter } from "./Review/review.routes.js";
 
-//levanto el Servidor   
+//start the server
 const app = express()
 app.use(cors());
+
+// Parse incoming requests with JSON payloads
 app.use(express.json());
+
+// Serve static media files for movies and series
 app.use("/movies", express.static(path.resolve("src/Shared/database/content/movies")));
+app.use("/series", express.static(path.resolve("src/Shared/database/content/series")));
 
-const PORT = 3000
+const PORT = 3000;
 
-app.listen(PORT,() =>{
+// Start listening for HTTP connections
+app.listen(PORT, () => {
     console.log(`Server listening at port: ${PORT}`);
-})
+});
 
-app.use('/api/movie',movieRouter)
+// Register REST API routers
+app.use("/api/movie", movieRouter);
+app.use("/api/series", seriesRouter);
+app.use("/api/seasons", seasonRouter);
+app.use("/api/episodes", episodeRouter);
+// Exposes review operations under /api/reviews.
+app.use("/api/reviews", reviewRouter);
 
-app.use((_,res) => {
-    return res.status(404).send({message: "source not found "});
-})
-
-
+// Fallback 404 handler for unrecognized routes
+app.use((_, res) => {
+    return res.status(404).send({ message: "source not found " });
+});

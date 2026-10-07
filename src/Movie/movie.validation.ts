@@ -1,9 +1,24 @@
 import { NextFunction, Request, Response } from "express";
+import { movieTitle } from "../Shared/database/content.Storage.js";
+
+export const sanitizeMoviePathInput = (req:Request,res:Response,next:NextFunction) => {
+    const data = req.body.data ? JSON.parse(req.body.data) : {};
+
+    req.body.sanitizeMoviePathInput = {
+        path: data.path
+    }
+
+    if(req.body.sanitizeMoviePathInput.path === undefined) {
+        delete req.body.sanitizeMoviePathInput.path;
+    }
+
+    next()
+}
 
 export const sanitizeMovieInput = (req:Request, res:Response,next:NextFunction) => {
 
-    // cuando viene CON archivo de video (porejemplo en UploadPage): el JSON viaja como string adentro de req.body.data
-    // cuando viene SIN archivo de video (por ejem en MisVideosPage): req.body ya trae los campos directamente
+    // when it comes WITH a video file (e.g. in UploadPage): the JSON travels as a string inside req.body.data
+    // when it comes WITHOUT a video file (e.g. in MyVideosPage): req.body already carries the fields directly
     const data = req.body.data ? JSON.parse(req.body.data) : req.body;
 
     req.body.sanitizeMovieInput = {

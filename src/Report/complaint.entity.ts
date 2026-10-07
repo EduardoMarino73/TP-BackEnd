@@ -1,3 +1,3 @@
-export class Denuncia {
+export class Complaint {
     
 }

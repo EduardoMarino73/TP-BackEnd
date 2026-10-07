@@ -1,3 +1,3 @@
-export class Report_type{
+export class ReportType{
     
 }

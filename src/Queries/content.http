@@ -1,0 +1,74 @@
+GET http://localhost:3000/api/movie
+
+###
+GET http://localhost:3000/api/movie/6a5a79f64f71e9cb8b36f235
+
+###
+POST http://localhost:3000/api/movie
+Content-Type: application/json
+
+{
+  "id_author": 2,
+  "path": "asd",
+  "title": "Back to the Future",
+  "category": "fiction",
+  "views": 0,
+  "description": "very good",
+  "state": true
+}
+
+###
+PUT http://localhost:3000/api/movie/6a5a9a74673dc5e05f499c78
+Content-Type: application/json
+
+{
+  "description": "regular"
+}
+
+###
+DELETE  http://localhost:3000/api/movie/1
+<<<<<<< Updated upstream:src/Consultas/contenido.http
+Content-Type: application/json
+=======
+Content-Type: application/json
+
+### ================= SERIES =================
+### List all series
+GET http://localhost:3000/api/series
+
+### Get series by ID
+GET http://localhost:3000/api/series/1
+
+### Create a series
+POST http://localhost:3000/api/series
+Content-Type: application/json
+
+{
+  "id_author": 1,
+  "title": "Breaking Bad",
+  "category": "Drama",
+  "description": "Un profesor de química se convierte en fabricante de metanfetamina."
+}
+
+### ================= SEASONS =================
+### List seasons of a serie
+GET http://localhost:3000/api/seasons/serie/1
+
+### Create a season
+POST http://localhost:3000/api/seasons
+Content-Type: application/json
+
+{
+  "id_serie": 1,
+  "season_number": 1,
+  "description": "Primera temporada de Breaking Bad"
+}
+
+### ================= EPISODES =================
+### List episodes of a season
+GET http://localhost:3000/api/episodes/season/1
+
+### Stream episode video
+GET http://localhost:3000/api/episodes/1/stream
+
+>>>>>>> Stashed changes:src/Queries/content.http
