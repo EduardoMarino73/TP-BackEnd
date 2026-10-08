@@ -41,7 +41,7 @@ export class MovieRepository implements Repository<Movie> {
         const result = await db.query...
         const rows = result[0]*/
         const [rows] = await db.query<MovieRow[]>(
-            "SELECT id, id_author, path, title, category, views, description, state FROM movies ORDER BY id",
+            "SELECT id, id_author, path, title, category, views, description, state FROM movies WHERE state = 'active' ORDER BY id",
         );
         /*map apply a callback function to every item into the array rows*/
         return rows.map(toMovie);
@@ -50,12 +50,24 @@ export class MovieRepository implements Repository<Movie> {
     async findOne(id: number): Promise<Movie | undefined> {
         /*take the firts parameter*/
         const [rows] = await db.query<MovieRow[]>(
-            "SELECT id, id_author, path, title, category, views, description, state FROM movies WHERE id = ?",
+            "SELECT id, id_author, path, title, category, views, description, state FROM movies WHERE id = ? AND state = 'active'",
             [id],
         );
         /*ternary operators
         try to return a movie or, insted return undefined */
         return rows[0] ? toMovie(rows[0]) : undefined;
+    }
+
+    /** Returns movies uploaded by one user. */
+    async findByAuthor(authorId: number): Promise<Movie[]> {
+        const [rows] = await db.execute<MovieRow[]>(
+            `SELECT id, id_author, path, title, category, views, description, state
+             FROM movies
+             WHERE id_author = ?
+             ORDER BY id`,
+            [authorId],
+        );
+        return rows.map(toMovie);
     }
 
     async create(item: Movie): Promise<Movie> {

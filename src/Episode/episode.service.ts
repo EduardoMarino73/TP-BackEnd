@@ -5,7 +5,9 @@ import { Repository } from "../Shared/repository.js";
  * Service layer for Episode business logic.
  */
 export class EpisodeService {
-    public constructor(private repo: Repository<Episode> & { findBySeason(id_season: number): Promise<Episode[]> }) {}
+    public constructor(private repo: Repository<Episode> & { 
+        findBySeason(id_season: number): Promise<Episode[]> 
+    }) {}
 
     /**
      * Looks up an episode by ID with integer validation.

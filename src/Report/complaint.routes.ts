@@ -1,6 +1,9 @@
 import { Router } from "express";
-import { findAll } from "./complaint.controller.js";
+import { authenticate, requireRole } from "../User_Folder/user.auth.js";
+import { createReport, getReport } from "./complaint.controller.js";
 
-const complaintRouter = Router()
+export const complaintRouter = Router();
 
-complaintRouter.get('/',findAll)
+// Only signed-in viewers can submit content reports.
+complaintRouter.post("/", authenticate, requireRole("viewer"), createReport);
+complaintRouter.get("/:id", authenticate, requireRole("administrator"), getReport);

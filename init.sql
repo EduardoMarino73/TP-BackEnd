@@ -9,6 +9,32 @@ CREATE DATABASE IF NOT EXISTS che_netflix
 
 USE che_netflix;
 
+-- Shared identity for viewers and administrators. Registering over the API
+-- always creates a viewer; promote the first administrator explicitly:
+-- UPDATE users SET role = 'administrator' WHERE email = 'admin@example.com';
+CREATE TABLE IF NOT EXISTS users (
+    id_user INT AUTO_INCREMENT PRIMARY KEY,
+    user_name VARCHAR(50) NOT NULL UNIQUE,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(254) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role ENUM('viewer', 'administrator') NOT NULL DEFAULT 'viewer',
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    expires_at DATETIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_sessions_user (user_id),
+    INDEX idx_user_sessions_expiry (expires_at),
+    CONSTRAINT fk_user_sessions_user FOREIGN KEY (user_id) REFERENCES users(id_user) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- OPTIONAL RESET: "CREATE TABLE IF NOT EXISTS" does not update a table that
 -- already exists. If your tables were created with an older version of this
 -- script (e.g. a missing column causes a 500 error), uncomment these lines
@@ -73,8 +99,7 @@ CREATE TABLE IF NOT EXISTS episodes (
 
 -- Viewer ratings for movies and episodes. audiovisual_type disambiguates IDs,
 -- since each content table currently has its own auto-increment sequence.
--- viewer_id points to the viewer/user identity from the domain model; this
--- project does not yet define a users table to reference with a foreign key.
+-- viewer_id points to the viewer account in users.
 CREATE TABLE IF NOT EXISTS reviews (
     id INT AUTO_INCREMENT PRIMARY KEY,
     viewer_id INT NOT NULL,
@@ -86,5 +111,50 @@ CREATE TABLE IF NOT EXISTS reviews (
     UNIQUE KEY uq_review_viewer_audiovisual (viewer_id, audiovisual_type, audiovisual_id),
     INDEX idx_reviews_audiovisual (audiovisual_type, audiovisual_id),
     INDEX idx_reviews_viewer (viewer_id)
+) ENGINE=InnoDB;
+
+-- Individual reports. One viewer can report each content item only once.
+CREATE TABLE IF NOT EXISTS content_reports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    target_type ENUM('movie', 'series') NOT NULL,
+    target_id INT NOT NULL,
+    reporter_id INT NOT NULL,
+    reason VARCHAR(1000) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_content_report_reporter_target (reporter_id, target_type, target_id),
+    INDEX idx_content_reports_target (target_type, target_id),
+    INDEX idx_content_reports_reporter (reporter_id),
+    CONSTRAINT fk_content_reports_reporter FOREIGN KEY (reporter_id)
+        REFERENCES users(id_user) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- One moderation case is generated when an item first reaches three reports.
+CREATE TABLE IF NOT EXISTS moderation_cases (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    target_type ENUM('movie', 'series') NOT NULL,
+    target_id INT NOT NULL,
+    report_count INT NOT NULL,
+    status ENUM('pending', 'appealed', 'upheld', 'dismissed') NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_moderation_case_content (target_type, target_id),
+    INDEX idx_moderation_case_status (status, id)
+) ENGINE=InnoDB;
+
+-- Content owners can appeal a moderation case. Administrators decide whether
+-- to uphold or dismiss that case.
+CREATE TABLE IF NOT EXISTS content_appeals (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    description VARCHAR(2000) NOT NULL,
+    moderation_case_id INT NOT NULL UNIQUE,
+    administrator_id INT NULL,
+    reviewed BOOLEAN NOT NULL DEFAULT FALSE,
+    decision ENUM('approved', 'rejected') NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at TIMESTAMP NULL,
+    INDEX idx_content_appeals_review_queue (reviewed, id),
+    CONSTRAINT fk_content_appeals_case FOREIGN KEY (moderation_case_id)
+        REFERENCES moderation_cases(id) ON DELETE CASCADE,
+    CONSTRAINT fk_content_appeals_administrator FOREIGN KEY (administrator_id)
+        REFERENCES users(id_user) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 

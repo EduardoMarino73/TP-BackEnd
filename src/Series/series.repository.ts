@@ -40,7 +40,7 @@ export class SeriesRepository implements Repository<Serie> {
     async findAll(): Promise<Serie[]> {
         // Execute the query; destructure rows from the first element of the returned tuple
         const [rows] = await db.query<SerieRow[]>(
-            "SELECT id, title, description, category, id_author, state FROM series ORDER BY id"
+            "SELECT id, title, description, category, id_author, state FROM series WHERE state = 'active' ORDER BY id"
         );
         // Map each database row into a Serie domain instance
         return rows.map(toSerie);
@@ -53,7 +53,7 @@ export class SeriesRepository implements Repository<Serie> {
     async findOne(id: number): Promise<Serie | undefined> {
         // Use parameterized query '?' to prevent SQL injection vulnerabilities
         const [rows] = await db.query<SerieRow[]>(
-            "SELECT id, title, description, category, id_author, state FROM series WHERE id = ?",
+            "SELECT id, title, description, category, id_author, state FROM series WHERE id = ? AND state = 'active'",
             [id]
         );
         // Return domain object if row exists, otherwise undefined

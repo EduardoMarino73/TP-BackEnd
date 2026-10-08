@@ -43,7 +43,13 @@ export class EpisodeRepository implements Repository<Episode> {
      */
     async findAll(): Promise<Episode[]> {
         const [rows] = await db.query<EpisodeRow[]>(
-            "SELECT id, id_season, episode_number, title, description, path, views, state, id_author FROM episodes ORDER BY id_season, episode_number"
+            `SELECT e.id, e.id_season, e.episode_number, e.title, e.description,
+                    e.path, e.views, e.state, e.id_author
+             FROM episodes AS e
+             JOIN seasons AS s ON s.id = e.id_season
+             JOIN series AS parent ON parent.id = s.id_serie
+             WHERE e.state = 'active' AND parent.state = 'active'
+             ORDER BY e.id_season, e.episode_number`,
         );
         return rows.map(toEpisode);
     }
@@ -53,7 +59,12 @@ export class EpisodeRepository implements Repository<Episode> {
      */
     async findOne(id: number): Promise<Episode | undefined> {
         const [rows] = await db.query<EpisodeRow[]>(
-            "SELECT id, id_season, episode_number, title, description, path, views, state, id_author FROM episodes WHERE id = ?",
+            `SELECT e.id, e.id_season, e.episode_number, e.title, e.description,
+                    e.path, e.views, e.state, e.id_author
+             FROM episodes AS e
+             JOIN seasons AS s ON s.id = e.id_season
+             JOIN series AS parent ON parent.id = s.id_serie
+             WHERE e.id = ? AND e.state = 'active' AND parent.state = 'active'`,
             [id]
         );
         return rows[0] ? toEpisode(rows[0]) : undefined;
@@ -65,8 +76,28 @@ export class EpisodeRepository implements Repository<Episode> {
      */
     async findBySeason(id_season: number): Promise<Episode[]> {
         const [rows] = await db.query<EpisodeRow[]>(
-            "SELECT id, id_season, episode_number, title, description, path, views, state, id_author FROM episodes WHERE id_season = ? ORDER BY episode_number",
+            `SELECT e.id, e.id_season, e.episode_number, e.title, e.description,
+                    e.path, e.views, e.state, e.id_author
+             FROM episodes AS e
+             JOIN seasons AS s ON s.id = e.id_season
+             JOIN series AS parent ON parent.id = s.id_serie
+             WHERE e.id_season = ?
+               AND e.state = 'active'
+               AND parent.state = 'active'
+             ORDER BY e.episode_number`,
             [id_season]
+        );
+        return rows.map(toEpisode);
+    }
+
+    /** Returns episodes uploaded by one user. */
+    async findByAuthor(authorId: number): Promise<Episode[]> {
+        const [rows] = await db.execute<EpisodeRow[]>(
+            `SELECT id, id_season, episode_number, title, description, path, views, state, id_author
+             FROM episodes
+             WHERE id_author = ?
+             ORDER BY id_season, episode_number`,
+            [authorId],
         );
         return rows.map(toEpisode);
     }
