@@ -33,7 +33,7 @@ export class SeasonRepository implements Repository<Season> {
      */
     async findAll(): Promise<Season[]> {
         const [rows] = await db.query<SeasonRow[]>(
-            "SELECT id, id_serie, season_number, description FROM seasons ORDER BY season_number"
+            "SELECT id, id_serie, season_number, description FROM seasons WHERE state = 'active' ORDER BY season_number"
         );
         return rows.map(toSeason);
     }
@@ -43,7 +43,7 @@ export class SeasonRepository implements Repository<Season> {
      */
     async findOne(id: number): Promise<Season | undefined> {
         const [rows] = await db.query<SeasonRow[]>(
-            "SELECT id, id_serie, season_number, description FROM seasons WHERE id = ?",
+            "SELECT id, id_serie, season_number, description FROM seasons WHERE id = ? AND state = 'active'",
             [id]
         );
         return rows[0] ? toSeason(rows[0]) : undefined;
@@ -55,7 +55,7 @@ export class SeasonRepository implements Repository<Season> {
      */
     async findBySerie(id_serie: number): Promise<Season[]> {
         const [rows] = await db.query<SeasonRow[]>(
-            "SELECT id, id_serie, season_number, description FROM seasons WHERE id_serie = ? ORDER BY season_number",
+            "SELECT id, id_serie, season_number, description FROM seasons WHERE id_serie = ? AND state = 'active' ORDER BY season_number",
             [id_serie]
         );
         return rows.map(toSeason);
@@ -93,12 +93,12 @@ export class SeasonRepository implements Repository<Season> {
     }
 
     /**
-     * Deletes a season by ID.
-     * Note: Thanks to ON DELETE CASCADE, all child episodes in MySQL will be automatically deleted as well.
+     * Logical delete of a season. Its episodes are hidden too, because every episode
+     * query only returns episodes whose season is active.
      */
     async delete(id: number): Promise<boolean> {
         const [result] = await db.execute<ResultSetHeader>(
-            "DELETE FROM seasons WHERE id = ?",
+            "UPDATE seasons SET state = 'deleted' WHERE id = ? AND state = 'active'",
             [id]
         );
         return result.affectedRows > 0;

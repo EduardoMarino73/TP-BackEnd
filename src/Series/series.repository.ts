@@ -100,11 +100,12 @@ export class SeriesRepository implements Repository<Serie> {
     }
 
     /**
-     * Deletes a series by ID. Returns true if at least one row was affected, false otherwise.
+     * Logical delete: the series (and with it its seasons and episodes) is hidden, but the rows are kept.
+     * Returns true if at least one row was affected, false otherwise.
      */
     async delete(id: number): Promise<boolean> {
         const [result] = await db.execute<ResultSetHeader>(
-            "DELETE FROM series WHERE id = ?",
+            "UPDATE series SET state = 'deleted' WHERE id = ? AND state = 'active'",
             [id]
         );
         return result.affectedRows > 0;

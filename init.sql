@@ -45,7 +45,8 @@ CREATE TABLE IF NOT EXISTS user_sessions (
 -- DROP TABLE IF EXISTS series;
 -- DROP TABLE IF EXISTS movies;
 
--- Create the movies table
+-- Create the movies table. state is 'active', 'suspended' (by moderation) or 'deleted'
+-- (by its uploader: deleting is logical, the row and the file are kept).
 CREATE TABLE IF NOT EXISTS movies (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
@@ -70,18 +71,22 @@ CREATE TABLE IF NOT EXISTS series (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- Create the seasons table
+-- Create the seasons table.
+-- Deleting is logical (state = 'deleted'). active_number is the season number while the
+-- season is active and NULL after it is deleted, so a deleted number can be used again.
 CREATE TABLE IF NOT EXISTS seasons (
     id INT AUTO_INCREMENT PRIMARY KEY,
     id_serie INT NOT NULL,
     season_number INT NOT NULL,
     description TEXT,
+    state VARCHAR(50) NOT NULL DEFAULT 'active',
+    active_number INT AS (IF(state = 'active', season_number, NULL)) STORED,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_serie) REFERENCES series(id) ON DELETE CASCADE,
-    UNIQUE KEY uq_serie_season (id_serie, season_number)
+    UNIQUE KEY uq_serie_season (id_serie, active_number)
 ) ENGINE=InnoDB;
 
--- Create the episodes table
+-- Create the episodes table. Deleting is logical (state = 'deleted').
 CREATE TABLE IF NOT EXISTS episodes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     id_season INT NOT NULL,
@@ -93,8 +98,10 @@ CREATE TABLE IF NOT EXISTS episodes (
     state VARCHAR(50) DEFAULT 'active',
     id_author INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- episode number while the episode is active, NULL once it is deleted (see seasons)
+    active_number INT AS (IF(state = 'active', episode_number, NULL)) STORED,
     FOREIGN KEY (id_season) REFERENCES seasons(id) ON DELETE CASCADE,
-    UNIQUE KEY uq_season_episode (id_season, episode_number)
+    UNIQUE KEY uq_season_episode (id_season, active_number)
 ) ENGINE=InnoDB;
 
 -- Viewer ratings for movies and episodes. audiovisual_type disambiguates IDs,

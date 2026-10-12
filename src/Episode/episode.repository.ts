@@ -48,7 +48,7 @@ export class EpisodeRepository implements Repository<Episode> {
              FROM episodes AS e
              JOIN seasons AS s ON s.id = e.id_season
              JOIN series AS parent ON parent.id = s.id_serie
-             WHERE e.state = 'active' AND parent.state = 'active'
+             WHERE e.state = 'active' AND s.state = 'active' AND parent.state = 'active'
              ORDER BY e.id_season, e.episode_number`,
         );
         return rows.map(toEpisode);
@@ -64,7 +64,7 @@ export class EpisodeRepository implements Repository<Episode> {
              FROM episodes AS e
              JOIN seasons AS s ON s.id = e.id_season
              JOIN series AS parent ON parent.id = s.id_serie
-             WHERE e.id = ? AND e.state = 'active' AND parent.state = 'active'`,
+             WHERE e.id = ? AND e.state = 'active' AND s.state = 'active' AND parent.state = 'active'`,
             [id]
         );
         return rows[0] ? toEpisode(rows[0]) : undefined;
@@ -83,6 +83,7 @@ export class EpisodeRepository implements Repository<Episode> {
              JOIN series AS parent ON parent.id = s.id_serie
              WHERE e.id_season = ?
                AND e.state = 'active'
+               AND s.state = 'active'
                AND parent.state = 'active'
              ORDER BY e.episode_number`,
             [id_season]
@@ -95,7 +96,7 @@ export class EpisodeRepository implements Repository<Episode> {
         const [rows] = await db.execute<EpisodeRow[]>(
             `SELECT id, id_season, episode_number, title, description, path, views, state, id_author
              FROM episodes
-             WHERE id_author = ?
+             WHERE id_author = ? AND state <> 'deleted'
              ORDER BY id_season, episode_number`,
             [authorId],
         );
@@ -134,11 +135,11 @@ export class EpisodeRepository implements Repository<Episode> {
     }
 
     /**
-     * Deletes an episode by ID.
+     * Logical delete: the episode is hidden everywhere, but its row and file are kept.
      */
     async delete(id: number): Promise<boolean> {
         const [result] = await db.execute<ResultSetHeader>(
-            "DELETE FROM episodes WHERE id = ?",
+            "UPDATE episodes SET state = 'deleted' WHERE id = ? AND state = 'active'",
             [id]
         );
         return result.affectedRows > 0;

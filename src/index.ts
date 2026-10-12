@@ -50,6 +50,7 @@ app.use("/series", async (req, res, next) => {
              JOIN series AS parent ON parent.id = s.id_serie
              WHERE e.path = ?
                AND e.state = 'active'
+               AND s.state = 'active'
                AND parent.state = 'active'
              LIMIT 1`,
             [mediaPath],

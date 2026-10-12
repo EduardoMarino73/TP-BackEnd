@@ -63,7 +63,7 @@ export class MovieRepository implements Repository<Movie> {
         const [rows] = await db.execute<MovieRow[]>(
             `SELECT id, id_author, path, title, category, views, description, state
              FROM movies
-             WHERE id_author = ?
+             WHERE id_author = ? AND state <> 'deleted'
              ORDER BY id`,
             [authorId],
         );
@@ -99,9 +99,10 @@ export class MovieRepository implements Repository<Movie> {
         return this.findOne(id);
     }
     
+    /** Logical delete: the movie is hidden everywhere, but its row and file are kept. */
     async delete(id: number): Promise<boolean> {
         const [result] = await db.execute<ResultSetHeader>(
-            "DELETE FROM movies WHERE id = ?",
+            "UPDATE movies SET state = 'deleted' WHERE id = ? AND state = 'active'",
             [id],
         );
         /**it return a number in form of a boolean value true or false  */
