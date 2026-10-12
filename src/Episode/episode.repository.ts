@@ -16,12 +16,13 @@ type EpisodeRow = RowDataPacket & {
     views: number;
     state: string;
     id_author: number;
+    uploader_user_name?: string | null;
 };
 
 /**
  * Transforms an EpisodeRow database record into an instance of Episode.
  */
-const toEpisode = (row: EpisodeRow): Episode => new Episode(
+const toEpisode = (row: EpisodeRow): Episode => Object.assign(new Episode(
     row.id_season,
     row.episode_number,
     row.title,
@@ -31,7 +32,7 @@ const toEpisode = (row: EpisodeRow): Episode => new Episode(
     Number(row.views),
     row.state,
     row.id
-);
+), { uploader_user_name: row.uploader_user_name ?? undefined });
 
 /**
  * EpisodeRepository implements data access logic for Episode entities.
@@ -44,8 +45,9 @@ export class EpisodeRepository implements Repository<Episode> {
     async findAll(): Promise<Episode[]> {
         const [rows] = await db.query<EpisodeRow[]>(
             `SELECT e.id, e.id_season, e.episode_number, e.title, e.description,
-                    e.path, e.views, e.state, e.id_author
+                    e.path, e.views, e.state, e.id_author, u.user_name AS uploader_user_name
              FROM episodes AS e
+             LEFT JOIN users AS u ON u.id_user = e.id_author
              JOIN seasons AS s ON s.id = e.id_season
              JOIN series AS parent ON parent.id = s.id_serie
              WHERE e.state = 'active' AND s.state = 'active' AND parent.state = 'active'
@@ -60,8 +62,9 @@ export class EpisodeRepository implements Repository<Episode> {
     async findOne(id: number): Promise<Episode | undefined> {
         const [rows] = await db.query<EpisodeRow[]>(
             `SELECT e.id, e.id_season, e.episode_number, e.title, e.description,
-                    e.path, e.views, e.state, e.id_author
+                    e.path, e.views, e.state, e.id_author, u.user_name AS uploader_user_name
              FROM episodes AS e
+             LEFT JOIN users AS u ON u.id_user = e.id_author
              JOIN seasons AS s ON s.id = e.id_season
              JOIN series AS parent ON parent.id = s.id_serie
              WHERE e.id = ? AND e.state = 'active' AND s.state = 'active' AND parent.state = 'active'`,
@@ -77,8 +80,9 @@ export class EpisodeRepository implements Repository<Episode> {
     async findBySeason(id_season: number): Promise<Episode[]> {
         const [rows] = await db.query<EpisodeRow[]>(
             `SELECT e.id, e.id_season, e.episode_number, e.title, e.description,
-                    e.path, e.views, e.state, e.id_author
+                    e.path, e.views, e.state, e.id_author, u.user_name AS uploader_user_name
              FROM episodes AS e
+             LEFT JOIN users AS u ON u.id_user = e.id_author
              JOIN seasons AS s ON s.id = e.id_season
              JOIN series AS parent ON parent.id = s.id_serie
              WHERE e.id_season = ?

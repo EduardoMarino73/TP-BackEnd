@@ -17,4 +17,7 @@ export class Serie {
         // Primary key assigned by the database (auto-incremented)
         public id?: number
     ) {}
+
+    /** Username of the uploader, filled when the series is read from the database. */
+    public uploader_user_name?: string;
 }

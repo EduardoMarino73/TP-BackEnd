@@ -13,7 +13,14 @@ type MovieRow = RowDataPacket & {
     views: number;
     description: string;
     state: string;
+    uploader_user_name?: string | null;
 };
+
+/* every read joins the uploader, so the detail can show who uploaded the movie */
+const MOVIE_SELECT = `SELECT m.id, m.id_author, m.path, m.title, m.category, m.views, m.description, m.state,
+        u.user_name AS uploader_user_name
+    FROM movies AS m
+    LEFT JOIN users AS u ON u.id_user = m.id_author`;
 
 export type DTO_Movie = {
     id: number;
@@ -21,7 +28,7 @@ export type DTO_Movie = {
 }
 
 /*is a function that convet a MovieRow into instance of Movie */
-const toMovie = (row: MovieRow): Movie => new Movie(
+const toMovie = (row: MovieRow): Movie => Object.assign(new Movie(
     row.id_author,
     row.path,
     row.title,
@@ -31,7 +38,7 @@ const toMovie = (row: MovieRow): Movie => new Movie(
     row.state,
     undefined,
     row.id,
-);
+), { uploader_user_name: row.uploader_user_name ?? undefined });
 
 export class MovieRepository implements Repository<Movie> {
 
@@ -41,7 +48,7 @@ export class MovieRepository implements Repository<Movie> {
         const result = await db.query...
         const rows = result[0]*/
         const [rows] = await db.query<MovieRow[]>(
-            "SELECT id, id_author, path, title, category, views, description, state FROM movies WHERE state = 'active' ORDER BY id",
+            `${MOVIE_SELECT} WHERE m.state = 'active' ORDER BY m.id`,
         );
         /*map apply a callback function to every item into the array rows*/
         return rows.map(toMovie);
@@ -50,7 +57,7 @@ export class MovieRepository implements Repository<Movie> {
     async findOne(id: number): Promise<Movie | undefined> {
         /*take the firts parameter*/
         const [rows] = await db.query<MovieRow[]>(
-            "SELECT id, id_author, path, title, category, views, description, state FROM movies WHERE id = ? AND state = 'active'",
+            `${MOVIE_SELECT} WHERE m.id = ? AND m.state = 'active'`,
             [id],
         );
         /*ternary operators
@@ -61,10 +68,9 @@ export class MovieRepository implements Repository<Movie> {
     /** Returns movies uploaded by one user. */
     async findByAuthor(authorId: number): Promise<Movie[]> {
         const [rows] = await db.execute<MovieRow[]>(
-            `SELECT id, id_author, path, title, category, views, description, state
-             FROM movies
-             WHERE id_author = ? AND state <> 'deleted'
-             ORDER BY id`,
+            `${MOVIE_SELECT}
+             WHERE m.id_author = ? AND m.state <> 'deleted'
+             ORDER BY m.id`,
             [authorId],
         );
         return rows.map(toMovie);

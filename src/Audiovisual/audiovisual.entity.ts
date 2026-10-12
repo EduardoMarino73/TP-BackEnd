@@ -4,6 +4,8 @@
  */
 export abstract class Audiovisual {
     public reportsCount = 0;
+    /** Username of the uploader, filled when the content is read from the database. */
+    public uploader_user_name?: string;
 
     protected constructor(
         public title: string,

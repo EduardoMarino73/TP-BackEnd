@@ -14,19 +14,26 @@ type SerieRow = RowDataPacket & {
     category: string;
     id_author: number;
     state: string | number;
+    uploader_user_name?: string | null;
 };
+
+/** Every read joins the uploader, so the detail can show who uploaded the series. */
+const SERIES_SELECT = `SELECT s.id, s.title, s.description, s.category, s.id_author, s.state,
+        u.user_name AS uploader_user_name
+    FROM series AS s
+    LEFT JOIN users AS u ON u.id_user = s.id_author`;
 
 /**
  * Helper function that transforms a raw MySQL database row into an instance of the Serie domain entity.
  */
-const toSerie = (row: SerieRow): Serie => new Serie(
+const toSerie = (row: SerieRow): Serie => Object.assign(new Serie(
     row.id_author,
     row.title,
     row.category,
     row.description,
     String(row.state),
     row.id
-);
+), { uploader_user_name: row.uploader_user_name ?? undefined });
 
 /**
  * SeriesRepository implements the generic Repository contract for Serie entities (Data Access Object / DAO).
@@ -40,7 +47,7 @@ export class SeriesRepository implements Repository<Serie> {
     async findAll(): Promise<Serie[]> {
         // Execute the query; destructure rows from the first element of the returned tuple
         const [rows] = await db.query<SerieRow[]>(
-            "SELECT id, title, description, category, id_author, state FROM series WHERE state = 'active' ORDER BY id"
+            `${SERIES_SELECT} WHERE s.state = 'active' ORDER BY s.id`
         );
         // Map each database row into a Serie domain instance
         return rows.map(toSerie);
@@ -53,7 +60,7 @@ export class SeriesRepository implements Repository<Serie> {
     async findOne(id: number): Promise<Serie | undefined> {
         // Use parameterized query '?' to prevent SQL injection vulnerabilities
         const [rows] = await db.query<SerieRow[]>(
-            "SELECT id, title, description, category, id_author, state FROM series WHERE id = ? AND state = 'active'",
+            `${SERIES_SELECT} WHERE s.id = ? AND s.state = 'active'`,
             [id]
         );
         // Return domain object if row exists, otherwise undefined
