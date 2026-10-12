@@ -3,7 +3,7 @@ import { MovieRepository } from "./movie.repository.js";
 import { MovieService } from "./movie.service.js";
 import fs from "fs";
 import path from "path";
-import { moviePath } from "../Shared/database/content.Storage.js";
+import { moviePath, thumbnailUrl, uploadedFile } from "../Shared/database/content.Storage.js";
 import { sendOwnershipError } from "../Shared/ownership.js";
 
 /*The controller takes care of handling the business logic that lets us put together a package
@@ -41,7 +41,8 @@ export const create = async (req:Request,res:Response) =>{
     const movie = await service.create({
         ...req.body.sanitizeMovieInput,
         // use the exact filename multer saved on disk, so the DB path always matches the real file
-        path: `/movies/${req.file!.filename}`,
+        path: `/movies/${uploadedFile(req, "file")!.filename}`,
+        thumbnail_path: thumbnailUrl(uploadedFile(req, "thumbnail")),
         // the uploader is whoever owns the token, never a field of the request
         id_author: req.user!.id_user,
     });

@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { pickText, readFields, reject, TextRule } from "../Shared/validation.js";
+import { thumbnailTooLarge, uploadedFile } from "../Shared/database/content.Storage.js";
 
 export const sanitizeMoviePathInput = (req:Request,res:Response,next:NextFunction) => {
     const data = readFields(req) ?? {};
@@ -30,7 +31,8 @@ export const sanitizeMovieInput = (req:Request, res:Response, next:NextFunction)
 
     const result = pickText(data, MOVIE_FIELDS, "create");
     if ("error" in result) return reject(req, res, 400, result.error);
-    if (!req.file) return res.status(400).json({ message: "A video file is required" });
+    if (!uploadedFile(req, "file")) return reject(req, res, 400, "A video file is required");
+    if (thumbnailTooLarge(req)) return reject(req, res, 413, "The thumbnail is too large");
 
     req.body.sanitizeMovieInput = result.values;
     next()

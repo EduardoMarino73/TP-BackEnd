@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { pickText, readFields, TextRule } from "../Shared/validation.js";
+import { pickText, readFields, reject, TextRule } from "../Shared/validation.js";
 
 /**
  * The only fields a viewer can send for a series. The author comes from the token
@@ -18,10 +18,11 @@ const SERIES_FIELDS: Record<string, TextRule> = {
  */
 const sanitizeSeries = (mode: "create" | "update") => (req: Request, res: Response, next: NextFunction) => {
     const data = readFields(req);
-    if (!data) return res.status(400).json({ message: "data must be a valid JSON object" });
+    // reject() also deletes the cover image, if one was uploaded
+    if (!data) return reject(req, res, 400, "data must be a valid JSON object");
 
     const result = pickText(data, SERIES_FIELDS, mode);
-    if ("error" in result) return res.status(400).json({ message: result.error });
+    if ("error" in result) return reject(req, res, 400, result.error);
 
     req.body.sanitizeSeriesInput = result.values;
     next();

@@ -4,6 +4,7 @@ import { EpisodeRepository } from "./episode.repository.js";
 import { EpisodeService } from "./episode.service.js";
 import { sendOwnershipError } from "../Shared/ownership.js";
 import { discardUploads } from "../Shared/validation.js";
+import { thumbnailUrl, uploadedFile } from "../Shared/database/content.Storage.js";
 import fs from "fs";
 import path from "path";
 import { episodePath } from "../Shared/database/content.Storage.js";
@@ -60,7 +61,8 @@ export const create = async (req: Request, res: Response) => {
         const result = await service.create({
             ...req.body.sanitizeEpisodeInput,
             // use the exact filename multer saved on disk
-            path: `/series/${req.file!.filename}`,
+            path: `/series/${uploadedFile(req, "archivo")!.filename}`,
+            thumbnail_path: thumbnailUrl(uploadedFile(req, "thumbnail")),
             // the uploader is whoever owns the token, never a field of the request
             id_author: req.user!.id_user,
         });

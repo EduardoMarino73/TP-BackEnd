@@ -13,7 +13,8 @@ movieRouter.get('/',findAll)
 movieRouter.get('/:id',findOne)
 movieRouter.get('/:path',sanitizeMoviePathInput,findOneByPath)
 // Writing requires a token. The token is checked before multer, so anonymous uploads never reach the disk.
-movieRouter.post('/',authenticate,requireRole('viewer'),movieStorage.download.single('file'),sanitizeMovieInput,create)
+// "file" is the video and the optional "thumbnail" an image captured by the frontend
+movieRouter.post('/',authenticate,requireRole('viewer'),movieStorage.download.fields([{ name: 'file', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]),sanitizeMovieInput,create)
 movieRouter.put('/:id',authenticate,sanitizeMovieUpdate,update)
 movieRouter.patch('/:id',authenticate,sanitizeMovieUpdate,update)
 movieRouter.delete('/:id',authenticate,remove)

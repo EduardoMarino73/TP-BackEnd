@@ -14,11 +14,25 @@ type SerieRow = RowDataPacket & {
     category: string;
     id_author: number;
     state: string | number;
+    thumbnail_path: string | null;
     uploader_user_name?: string | null;
 };
 
-/** Every read joins the uploader, so the detail can show who uploaded the series. */
+/**
+ * Every read joins the uploader, so the detail can show who uploaded the series.
+ * thumbnail_path is the series' own cover or, when it has none, the thumbnail of its
+ * first active episode (lowest season number, then lowest episode number).
+ */
 const SERIES_SELECT = `SELECT s.id, s.title, s.description, s.category, s.id_author, s.state,
+        COALESCE(s.thumbnail_path, (
+            SELECT e.thumbnail_path
+            FROM seasons AS se
+            JOIN episodes AS e ON e.id_season = se.id
+            WHERE se.id_serie = s.id AND se.state = 'active' AND e.state = 'active'
+              AND e.thumbnail_path IS NOT NULL
+            ORDER BY se.season_number, e.episode_number
+            LIMIT 1
+        )) AS thumbnail_path,
         u.user_name AS uploader_user_name
     FROM series AS s
     LEFT JOIN users AS u ON u.id_user = s.id_author`;
@@ -33,7 +47,10 @@ const toSerie = (row: SerieRow): Serie => Object.assign(new Serie(
     row.description,
     String(row.state),
     row.id
-), { uploader_user_name: row.uploader_user_name ?? undefined });
+), {
+    uploader_user_name: row.uploader_user_name ?? undefined,
+    thumbnail_path: row.thumbnail_path ?? null,
+});
 
 /**
  * SeriesRepository implements the generic Repository contract for Serie entities (Data Access Object / DAO).
@@ -73,8 +90,8 @@ export class SeriesRepository implements Repository<Serie> {
      */
     async create(item: Serie): Promise<Serie> {
         const [result] = await db.execute<ResultSetHeader>(
-            "INSERT INTO series (title, description, category, id_author, state) VALUES (?, ?, ?, ?, ?)",
-            [item.title, item.description, item.category, item.id_author, item.state]
+            "INSERT INTO series (title, description, category, thumbnail_path, id_author, state) VALUES (?, ?, ?, ?, ?, ?)",
+            [item.title, item.description, item.category, item.thumbnail_path, item.id_author, item.state]
         );
         // Assign the generated auto-increment primary key ID to the entity
         item.id = result.insertId;

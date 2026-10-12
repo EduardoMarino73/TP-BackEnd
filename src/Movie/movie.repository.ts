@@ -13,12 +13,13 @@ type MovieRow = RowDataPacket & {
     views: number;
     description: string;
     state: string;
+    thumbnail_path: string | null;
     uploader_user_name?: string | null;
 };
 
 /* every read joins the uploader, so the detail can show who uploaded the movie */
 const MOVIE_SELECT = `SELECT m.id, m.id_author, m.path, m.title, m.category, m.views, m.description, m.state,
-        u.user_name AS uploader_user_name
+        m.thumbnail_path, u.user_name AS uploader_user_name
     FROM movies AS m
     LEFT JOIN users AS u ON u.id_user = m.id_author`;
 
@@ -38,7 +39,10 @@ const toMovie = (row: MovieRow): Movie => Object.assign(new Movie(
     row.state,
     undefined,
     row.id,
-), { uploader_user_name: row.uploader_user_name ?? undefined });
+), {
+    uploader_user_name: row.uploader_user_name ?? undefined,
+    thumbnail_path: row.thumbnail_path ?? null,
+});
 
 export class MovieRepository implements Repository<Movie> {
 
@@ -78,8 +82,8 @@ export class MovieRepository implements Repository<Movie> {
 
     async create(item: Movie): Promise<Movie> {
         const [result] = await db.execute<ResultSetHeader>(
-            "INSERT INTO movies (id_author, path, title, category, views, description, state) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [item.id_author, item.path, item.title, item.category, item.views, item.description, item.state],
+            "INSERT INTO movies (id_author, path, thumbnail_path, title, category, views, description, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [item.id_author, item.path, item.thumbnail_path, item.title, item.category, item.views, item.description, item.state],
         );
         /**it set the id of the movie that inserted into the table of the database*/
         item.id = result.insertId;

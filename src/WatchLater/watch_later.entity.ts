@@ -17,4 +17,6 @@ export type WatchLaterItem = WatchLater & {
     title: string;
     category: string;
     description: string;
+    // movie thumbnail, or series cover (falling back to its first episode's thumbnail)
+    thumbnail_path: string | null;
 };

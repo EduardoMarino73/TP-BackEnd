@@ -7,6 +7,7 @@ import { OwnedResult, whenOwner } from "../Shared/ownership.js";
 /** Fields of a new episode; the author comes from the token and the path from the uploaded file. */
 export type NewEpisode = Pick<Episode, "id_season" | "episode_number" | "title" | "path" | "id_author"> & {
     description?: string;
+    thumbnail_path?: string | null;
 };
 
 /** Fields that can change in an episode. */
@@ -56,7 +57,7 @@ export class EpisodeService {
     async create(input: NewEpisode): Promise<OwnedResult<Episode>> {
         const season = await this.seasons.findOne(input.id_season);
         const serie = season && await this.series.findOne(season.id_serie);
-        return whenOwner(serie, input.id_author, () => this.repo.create(new Episode(
+        const episode = new Episode(
             input.id_season,
             input.episode_number,
             input.title,
@@ -65,7 +66,9 @@ export class EpisodeService {
             input.id_author,
             0,
             "active"
-        )));
+        );
+        episode.thumbnail_path = input.thumbnail_path ?? null;
+        return whenOwner(serie, input.id_author, () => this.repo.create(episode));
     }
 
     /**

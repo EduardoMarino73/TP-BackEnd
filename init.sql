@@ -51,6 +51,8 @@ CREATE TABLE IF NOT EXISTS movies (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     path VARCHAR(255) NOT NULL,
+    -- thumbnail image captured by the frontend ("/thumbnails/..."), NULL for old content
+    thumbnail_path VARCHAR(255) NULL,
     category VARCHAR(100),
     views INT DEFAULT 0,
     description TEXT,
@@ -66,6 +68,8 @@ CREATE TABLE IF NOT EXISTS series (
     title VARCHAR(255) NOT NULL,
     description TEXT,
     category VARCHAR(100),
+    -- optional cover; without it the API uses the first episode's thumbnail
+    thumbnail_path VARCHAR(255) NULL,
     id_author INT NOT NULL,
     state VARCHAR(50) DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -94,6 +98,7 @@ CREATE TABLE IF NOT EXISTS episodes (
     title VARCHAR(255) NOT NULL,
     description TEXT,
     path VARCHAR(255) NOT NULL,
+    thumbnail_path VARCHAR(255) NULL,
     views INT DEFAULT 0,
     state VARCHAR(50) DEFAULT 'active',
     id_author INT NOT NULL,

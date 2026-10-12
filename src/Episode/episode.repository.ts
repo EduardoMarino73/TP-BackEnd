@@ -16,6 +16,7 @@ type EpisodeRow = RowDataPacket & {
     views: number;
     state: string;
     id_author: number;
+    thumbnail_path: string | null;
     uploader_user_name?: string | null;
 };
 
@@ -32,7 +33,10 @@ const toEpisode = (row: EpisodeRow): Episode => Object.assign(new Episode(
     Number(row.views),
     row.state,
     row.id
-), { uploader_user_name: row.uploader_user_name ?? undefined });
+), {
+    uploader_user_name: row.uploader_user_name ?? undefined,
+    thumbnail_path: row.thumbnail_path ?? null,
+});
 
 /**
  * EpisodeRepository implements data access logic for Episode entities.
@@ -45,7 +49,7 @@ export class EpisodeRepository implements Repository<Episode> {
     async findAll(): Promise<Episode[]> {
         const [rows] = await db.query<EpisodeRow[]>(
             `SELECT e.id, e.id_season, e.episode_number, e.title, e.description,
-                    e.path, e.views, e.state, e.id_author, u.user_name AS uploader_user_name
+                    e.path, e.thumbnail_path, e.views, e.state, e.id_author, u.user_name AS uploader_user_name
              FROM episodes AS e
              LEFT JOIN users AS u ON u.id_user = e.id_author
              JOIN seasons AS s ON s.id = e.id_season
@@ -62,7 +66,7 @@ export class EpisodeRepository implements Repository<Episode> {
     async findOne(id: number): Promise<Episode | undefined> {
         const [rows] = await db.query<EpisodeRow[]>(
             `SELECT e.id, e.id_season, e.episode_number, e.title, e.description,
-                    e.path, e.views, e.state, e.id_author, u.user_name AS uploader_user_name
+                    e.path, e.thumbnail_path, e.views, e.state, e.id_author, u.user_name AS uploader_user_name
              FROM episodes AS e
              LEFT JOIN users AS u ON u.id_user = e.id_author
              JOIN seasons AS s ON s.id = e.id_season
@@ -80,7 +84,7 @@ export class EpisodeRepository implements Repository<Episode> {
     async findBySeason(id_season: number): Promise<Episode[]> {
         const [rows] = await db.query<EpisodeRow[]>(
             `SELECT e.id, e.id_season, e.episode_number, e.title, e.description,
-                    e.path, e.views, e.state, e.id_author, u.user_name AS uploader_user_name
+                    e.path, e.thumbnail_path, e.views, e.state, e.id_author, u.user_name AS uploader_user_name
              FROM episodes AS e
              LEFT JOIN users AS u ON u.id_user = e.id_author
              JOIN seasons AS s ON s.id = e.id_season
@@ -112,8 +116,8 @@ export class EpisodeRepository implements Repository<Episode> {
      */
     async create(item: Episode): Promise<Episode> {
         const [result] = await db.execute<ResultSetHeader>(
-            "INSERT INTO episodes (id_season, episode_number, title, description, path, views, state, id_author) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            [item.id_season, item.episode_number, item.title, item.description, item.path, item.views, item.state, item.id_author]
+            "INSERT INTO episodes (id_season, episode_number, title, description, path, thumbnail_path, views, state, id_author) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [item.id_season, item.episode_number, item.title, item.description, item.path, item.thumbnail_path, item.views, item.state, item.id_author]
         );
         item.id = result.insertId;
         return item;

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { SeriesRepository } from "./series.repository.js";
 import { SeriesService } from "./series.service.js";
 import { sendOwnershipError } from "../Shared/ownership.js";
+import { thumbnailUrl, uploadedFile } from "../Shared/database/content.Storage.js";
 
 /**
  * Controller layer responsible for handling incoming HTTP requests and responses for Series.
@@ -41,6 +42,7 @@ export const create = async (req: Request, res: Response) => {
     const serie = await service.create({
         ...req.body.sanitizeSeriesInput,
         id_author: req.user!.id_user,
+        thumbnail_path: thumbnailUrl(uploadedFile(req, "thumbnail")),
     });
     return res.status(201).json({ message: "serie created", data: serie });
 };

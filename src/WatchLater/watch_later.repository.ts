@@ -12,11 +12,17 @@ type WatchLaterRow = RowDataPacket & {
     title: string;
     category: string;
     description: string;
+    thumbnail_path: string | null;
 };
 
 const toItem = (row: WatchLaterRow): WatchLaterItem => Object.assign(
     new WatchLater(row.viewer_id, row.audiovisual_id, row.audiovisual_type, row.id, row.created_at),
-    { title: row.title, category: row.category ?? "", description: row.description ?? "" },
+    {
+        title: row.title,
+        category: row.category ?? "",
+        description: row.description ?? "",
+        thumbnail_path: row.thumbnail_path ?? null,
+    },
 );
 
 /** Database access for the "Watch later" lists. */
@@ -30,7 +36,16 @@ export class WatchLaterRepository {
             `SELECT w.id, w.viewer_id, w.audiovisual_id, w.audiovisual_type, w.created_at,
                     COALESCE(m.title, s.title) AS title,
                     COALESCE(m.category, s.category) AS category,
-                    COALESCE(m.description, s.description) AS description
+                    COALESCE(m.description, s.description) AS description,
+                    COALESCE(m.thumbnail_path, s.thumbnail_path, (
+                        SELECT e.thumbnail_path
+                        FROM seasons AS se
+                        JOIN episodes AS e ON e.id_season = se.id
+                        WHERE se.id_serie = s.id AND se.state = 'active' AND e.state = 'active'
+                          AND e.thumbnail_path IS NOT NULL
+                        ORDER BY se.season_number, e.episode_number
+                        LIMIT 1
+                    )) AS thumbnail_path
              FROM watch_later AS w
              LEFT JOIN movies AS m
                 ON w.audiovisual_type = 'movie' AND m.id = w.audiovisual_id AND m.state = 'active'

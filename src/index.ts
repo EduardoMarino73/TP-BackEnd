@@ -15,7 +15,7 @@ import { appealRouter } from "./Appeal/appeal.routes.js";
 import { reportTypeRouter } from "./Report_Type/report_type.routes.js";
 import { watchLaterRouter } from "./WatchLater/watch_later.routes.js";
 import { db } from "./Shared/database/connections.js";
-import { episodePath, moviePath } from "./Shared/database/content.Storage.js";
+import { episodePath, moviePath, thumbnailPath } from "./Shared/database/content.Storage.js";
 import { config } from "./Shared/config.js";
 import { RowDataPacket } from "mysql2";
 
@@ -63,6 +63,9 @@ app.use("/series", async (req, res, next) => {
         return next(error);
     }
 }, express.static(episodePath));
+
+// Thumbnails and covers are public images (unique random names), served as they are.
+app.use("/thumbnails", express.static(thumbnailPath, { maxAge: "7d" }));
 
 // Register REST API routers
 app.use("/api/movie", movieRouter);

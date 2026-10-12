@@ -6,6 +6,8 @@ export abstract class Audiovisual {
     public reportsCount = 0;
     /** Username of the uploader, filled when the content is read from the database. */
     public uploader_user_name?: string;
+    /** URL path of the thumbnail image ("/thumbnails/..."), or null when there is none. */
+    public thumbnail_path: string | null = null;
 
     protected constructor(
         public title: string,

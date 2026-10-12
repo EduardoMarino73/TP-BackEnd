@@ -11,7 +11,8 @@ episodeRouter.get("/:id/stream", streamEpisode);
 episodeRouter.get("/season/:seasonId", findBySeason);
 episodeRouter.get("/:id", findOne);
 // Writing requires a token. The token is checked before multer, so anonymous uploads never reach the disk.
-episodeRouter.post("/", authenticate, requireRole("viewer"), episodeStorage.download.single("archivo"), sanitizeEpisodeInput, create);
+// "archivo" is the video and the optional "thumbnail" an image captured by the frontend
+episodeRouter.post("/", authenticate, requireRole("viewer"), episodeStorage.download.fields([{ name: "archivo", maxCount: 1 }, { name: "thumbnail", maxCount: 1 }]), sanitizeEpisodeInput, create);
 episodeRouter.put("/:id", authenticate, sanitizeEpisodeUpdate, update);
 episodeRouter.patch("/:id", authenticate, sanitizeEpisodeUpdate, update);
 episodeRouter.delete("/:id", authenticate, remove);

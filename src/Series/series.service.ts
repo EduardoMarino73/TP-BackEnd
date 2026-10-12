@@ -3,7 +3,10 @@ import { Repository } from "../Shared/repository.js";
 import { OwnedResult, whenOwner } from "../Shared/ownership.js";
 
 /** Fields of a new series; the author comes from the token. */
-export type NewSerie = Pick<Serie, "id_author" | "title" | "category"> & { description?: string };
+export type NewSerie = Pick<Serie, "id_author" | "title" | "category"> & {
+    description?: string;
+    thumbnail_path?: string | null;
+};
 
 /** Fields the uploader may change later. */
 export type SerieChanges = Partial<Pick<Serie, "title" | "category" | "description">>;
@@ -47,6 +50,7 @@ export class SeriesService {
             input.description ?? "",
             "active"
         );
+        serie.thumbnail_path = input.thumbnail_path ?? null;
         return this.repo.create(serie);
     }
 
