@@ -1,17 +1,8 @@
-import multer from "multer";
-import { movieTitle, setMoviePath } from "../Shared/database/content.Storage.js";
+import { moviePath, videoUpload } from "../Shared/database/content.Storage.js";
 
+/** Multer setup for movie uploads: unique names, size limit and video files only. */
 class MovieStorage{
-    storage = multer.diskStorage({
-        destination: function(req,file,cb){
-            cb(null,setMoviePath(req))
-        },
-        filename:function(req,file,cb){
-            cb(null,movieTitle(req,file.originalname));
-        }
-    });
-
-    download = multer({storage: this.storage});
+    download = videoUpload(moviePath);
 }
 
 export default new MovieStorage()
