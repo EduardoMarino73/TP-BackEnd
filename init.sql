@@ -120,6 +120,19 @@ CREATE TABLE IF NOT EXISTS reviews (
     INDEX idx_reviews_viewer (viewer_id)
 ) ENGINE=InnoDB;
 
+-- Each viewer's "Watch later" list: movies and whole series saved to watch later.
+-- audiovisual_type tells whether audiovisual_id is a movie or a series.
+CREATE TABLE IF NOT EXISTS watch_later (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    viewer_id INT NOT NULL,
+    audiovisual_id INT NOT NULL,
+    audiovisual_type ENUM('movie', 'series') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_watch_later_item (viewer_id, audiovisual_type, audiovisual_id),
+    CONSTRAINT fk_watch_later_viewer FOREIGN KEY (viewer_id)
+        REFERENCES users(id_user) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- Catalog of report reasons, managed by administrators (/api/report-types).
 -- A report picks one type; when requires_details is TRUE (e.g. "Other") it must also explain it.
 CREATE TABLE IF NOT EXISTS report_types (

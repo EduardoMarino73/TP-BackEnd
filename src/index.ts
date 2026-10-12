@@ -13,6 +13,7 @@ import { administratorRouter } from "./User_Folder/administrator/administrator.r
 import { complaintRouter } from "./Report/complaint.routes.js";
 import { appealRouter } from "./Appeal/appeal.routes.js";
 import { reportTypeRouter } from "./Report_Type/report_type.routes.js";
+import { watchLaterRouter } from "./WatchLater/watch_later.routes.js";
 import { db } from "./Shared/database/connections.js";
 import { episodePath, moviePath } from "./Shared/database/content.Storage.js";
 import { config } from "./Shared/config.js";
@@ -76,6 +77,7 @@ app.use("/api/administrators", administratorRouter);
 app.use("/api/reports", complaintRouter);
 app.use("/api/appeals", appealRouter);
 app.use("/api/report-types", reportTypeRouter);
+app.use("/api/watch-later", watchLaterRouter);
 
 // Fallback 404 handler for unrecognized routes
 app.use((_, res) => {
