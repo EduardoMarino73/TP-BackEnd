@@ -3,6 +3,7 @@ import { MovieRepository } from "../Movie/movie.repository.js";
 import { SeriesRepository } from "../Series/series.repository.js";
 import { ComplaintRepository } from "./complaint.repository.js";
 import { ReportTargetType } from "./complaint.entity.js";
+import { ReportTypeRepository } from "../Report_Type/report_type.repository.js";
 
 /** Number of distinct viewer reports required to open a moderation case. */
 export const REPORTS_PER_COMPLAINT = 3;
@@ -14,16 +15,27 @@ export class ReportService {
         private readonly appeals = new AppealRepository(),
         private readonly movies = new MovieRepository(),
         private readonly series = new SeriesRepository(),
+        private readonly reportTypes = new ReportTypeRepository(),
     ) { }
 
-    /** Creates a report against an active movie or series. */
+    /**
+     * Creates a report against an active movie or series.
+     * The report type must exist, and types such as "Other" need details.
+     */
     async createReport(input: {
         targetType: ReportTargetType;
         targetId: number;
         reporterId: number;
-        reason: string;
+        reportTypeId: number;
+        details: string | null;
     }) {
-        const result = await this.reports.submitReport(input, REPORTS_PER_COMPLAINT);
+        const reportType = await this.reportTypes.findOne(input.reportTypeId);
+        if (!reportType) return { error: "That report type does not exist" as const, invalid: true };
+        if (reportType.requiresDetails && !input.details) {
+            return { error: "Please explain the reason for this report" as const, invalid: true };
+        }
+
+        const result = await this.reports.submitReport({ ...input, reportType: reportType.name }, REPORTS_PER_COMPLAINT);
         if (result.error === "not_found") return { error: "Content not found" as const };
         if (result.error === "own_content") return { error: "You cannot report your own content" as const };
         if (result.error === "inactive") return { error: "Content is not active" as const };

@@ -139,18 +139,24 @@ INSERT IGNORE INTO report_types (name, requires_details) VALUES
     ('Other', TRUE);
 
 -- Individual reports. One viewer can report each content item only once.
+-- Each report has one type from report_types and an optional explanation (details),
+-- which is required when the type has requires_details.
 CREATE TABLE IF NOT EXISTS content_reports (
     id INT AUTO_INCREMENT PRIMARY KEY,
     target_type ENUM('movie', 'series') NOT NULL,
     target_id INT NOT NULL,
     reporter_id INT NOT NULL,
-    reason VARCHAR(1000) NOT NULL,
+    report_type_id INT NOT NULL,
+    details VARCHAR(1000) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_content_report_reporter_target (reporter_id, target_type, target_id),
     INDEX idx_content_reports_target (target_type, target_id),
     INDEX idx_content_reports_reporter (reporter_id),
+    INDEX idx_content_reports_type (report_type_id),
     CONSTRAINT fk_content_reports_reporter FOREIGN KEY (reporter_id)
-        REFERENCES users(id_user) ON DELETE CASCADE
+        REFERENCES users(id_user) ON DELETE CASCADE,
+    CONSTRAINT fk_content_reports_type FOREIGN KEY (report_type_id)
+        REFERENCES report_types(id)
 ) ENGINE=InnoDB;
 
 -- One moderation case is generated when an item first reaches three reports.

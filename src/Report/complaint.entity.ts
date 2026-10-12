@@ -12,13 +12,19 @@ export class Complaint {
     ) { }
 }
 
-/** An individual viewer report that contributes to a moderation case. */
+/**
+ * An individual viewer report that contributes to a moderation case.
+ * It has one report type ("Violence", "Other"...) and an optional explanation.
+ */
 export class ContentReport {
     constructor(
         public id: number,
         public targetType: ReportTargetType,
         public targetId: number,
         public reporterId: number,
-        public reason: string,
+        public reportTypeId: number,
+        // name of the report type, for display
+        public reportType: string,
+        public details: string | null,
     ) { }
 }

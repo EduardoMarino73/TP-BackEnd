@@ -15,25 +15,19 @@ function asyncHandler(
 
 /** Creates a content report from the authenticated viewer. */
 export const createReport = asyncHandler(async (req, res) => {
-    const { targetType, targetId, reason } = req.body ?? {};
-    if (targetType !== "movie" && targetType !== "series") {
-        return res.status(400).json({ message: "targetType must be movie or series" });
-    }
-    if (!Number.isSafeInteger(Number(targetId)) || Number(targetId) < 1) {
-        return res.status(400).json({ message: "targetId must be a positive integer" });
-    }
-    if (typeof reason !== "string" || !reason.trim() || reason.trim().length > 1000) {
-        return res.status(400).json({ message: "reason is required and must be at most 1000 characters" });
-    }
+    // the body was checked by validateNewReport
+    const { targetType, targetId, reportTypeId, details } = req.body;
 
     const result = await reports.createReport({
         targetType: targetType as ReportTargetType,
-        targetId: Number(targetId),
+        targetId,
         reporterId: req.user!.id_user,
-        reason: reason.trim(),
+        reportTypeId,
+        details,
     });
     if ("error" in result) {
-        const status = result.error === "Content not found" ? 404 : 409;
+        const status = result.error === "Content not found" ? 404
+            : "invalid" in result ? 400 : 409;
         return res.status(status).json({ message: result.error });
     }
 

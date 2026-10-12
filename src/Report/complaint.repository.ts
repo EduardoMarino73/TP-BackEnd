@@ -15,8 +15,14 @@ type ContentReportRow = RowDataPacket & {
     target_type: ReportTargetType;
     target_id: number;
     reporter_id: number;
-    reason: string;
+    report_type_id: number;
+    report_type: string;
+    details: string | null;
 };
+
+/** Columns of a report, with the name of its type. Needs "FROM content_reports AS r JOIN report_types AS t". */
+const REPORT_COLUMNS = `r.id, r.target_type, r.target_id, r.reporter_id,
+    r.report_type_id, t.name AS report_type, r.details`;
 
 function toComplaint(row: ComplaintRow): Complaint {
     return new Complaint(
@@ -34,7 +40,9 @@ function toContentReport(row: ContentReportRow): ContentReport {
         row.target_type,
         row.target_id,
         row.reporter_id,
-        row.reason,
+        row.report_type_id,
+        row.report_type,
+        row.details,
     );
 }
 
@@ -69,7 +77,9 @@ export class ComplaintRepository {
         targetType: ReportTargetType;
         targetId: number;
         reporterId: number;
-        reason: string;
+        reportTypeId: number;
+        reportType: string;
+        details: string | null;
     }, threshold: number): Promise<{
         report?: ContentReport;
         reportCount?: number;
@@ -116,9 +126,9 @@ export class ComplaintRepository {
 
             const [insertResult] = await connection.execute<ResultSetHeader>(
                 `INSERT INTO content_reports
-                    (target_type, target_id, reporter_id, reason)
-                 VALUES (?, ?, ?, ?)`,
-                [input.targetType, input.targetId, input.reporterId, input.reason],
+                    (target_type, target_id, reporter_id, report_type_id, details)
+                 VALUES (?, ?, ?, ?, ?)`,
+                [input.targetType, input.targetId, input.reporterId, input.reportTypeId, input.details],
             );
             const [countRows] = await connection.execute<(RowDataPacket & { total: number })[]>(
                 `SELECT COUNT(*) AS total
@@ -162,7 +172,9 @@ export class ComplaintRepository {
                     input.targetType,
                     input.targetId,
                     input.reporterId,
-                    input.reason,
+                    input.reportTypeId,
+                    input.reportType,
+                    input.details,
                 ),
                 reportCount,
                 complaintCreated,
@@ -188,10 +200,11 @@ export class ComplaintRepository {
             [complaint.targetType, complaint.targetId],
             ),
             db.execute<ContentReportRow[]>(
-                `SELECT id, target_type, target_id, reporter_id, reason
-                 FROM content_reports
-                 WHERE target_type = ? AND target_id = ?
-                 ORDER BY id`,
+                `SELECT ${REPORT_COLUMNS}
+                 FROM content_reports AS r
+                 JOIN report_types AS t ON t.id = r.report_type_id
+                 WHERE r.target_type = ? AND r.target_id = ?
+                 ORDER BY r.id`,
                 [complaint.targetType, complaint.targetId],
             ),
         ]);
