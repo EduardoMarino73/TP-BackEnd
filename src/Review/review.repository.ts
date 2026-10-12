@@ -57,8 +57,9 @@ export class ReviewRepository implements Repository<Review> {
 
     /** Updates only the properties supplied in the request. */
     async update(id: number, input: Partial<Review>): Promise<Review | undefined> {
-        const allowed = ["viewerId", "rating", "audiovisualId", "audiovisualType"] as const;
-        const columns = { viewerId: "viewer_id", rating: "rating", audiovisualId: "audiovisual_id", audiovisualType: "audiovisual_type" };
+        // Only the rating can change: the viewer and the rated content are fixed
+        const allowed = ["rating"] as const;
+        const columns = { rating: "rating" };
         const fields = allowed.filter((field) => input[field] !== undefined);
         if (!fields.length) return this.findOne(id);
         const values = fields.map((field) => input[field]) as Array<string | number | boolean>;
