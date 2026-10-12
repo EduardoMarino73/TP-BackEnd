@@ -25,3 +25,29 @@ export function validateNewReport(req: Request, res: Response, next: NextFunctio
     req.body = { targetType, targetId: target, reportTypeId: type, details: text || null };
     return next();
 }
+
+const CASE_STATUSES = ["pending", "appealed", "upheld", "dismissed"];
+
+/** Optional filters of GET /api/reports: ?id=, ?status= and ?reportTypeId=. */
+export function validateCaseFilters(req: Request, res: Response, next: NextFunction) {
+    const { id, status, reportTypeId } = req.query;
+    const filters: Record<string, string | number> = {};
+    if (id !== undefined && id !== "") {
+        const caseId = readPositiveInt(id);
+        if (!caseId) return res.status(400).json({ message: "id must be a positive integer" });
+        filters.id = caseId;
+    }
+    if (status !== undefined && status !== "") {
+        if (typeof status !== "string" || !CASE_STATUSES.includes(status)) {
+            return res.status(400).json({ message: `status must be one of: ${CASE_STATUSES.join(", ")}` });
+        }
+        filters.status = status;
+    }
+    if (reportTypeId !== undefined && reportTypeId !== "") {
+        const typeId = readPositiveInt(reportTypeId);
+        if (!typeId) return res.status(400).json({ message: "reportTypeId must be a positive integer" });
+        filters.reportTypeId = typeId;
+    }
+    res.locals.caseFilters = filters;
+    return next();
+}

@@ -2,7 +2,7 @@ import { AppealRepository } from "../Appeal/appeal.repository.js";
 import { MovieRepository } from "../Movie/movie.repository.js";
 import { SeriesRepository } from "../Series/series.repository.js";
 import { ComplaintRepository } from "./complaint.repository.js";
-import { ReportTargetType } from "./complaint.entity.js";
+import { CaseFilters, ReportTargetType } from "./complaint.entity.js";
 import { ReportTypeRepository } from "../Report_Type/report_type.repository.js";
 
 /** Number of distinct viewer reports required to open a moderation case. */
@@ -49,9 +49,19 @@ export class ReportService {
         };
     }
 
-    /** Returns a report with the current number of reports for its content. */
+    /** Lists moderation cases for administrators, with optional filters. */
+    listCases(filters: CaseFilters) {
+        return this.reports.findCases(filters);
+    }
+
+    /** Returns a case (with its content, owner, appeal and grouped reasons) and each of its reports. */
     async getReport(id: number) {
-        return this.reports.findWithReportCount(id);
+        const [detail, summary] = await Promise.all([
+            this.reports.findWithReportCount(id),
+            this.reports.findCases({ id }),
+        ]);
+        if (!detail || !summary[0]) return undefined;
+        return { ...detail, summary: summary[0] };
     }
 
     /** Allows only the content owner to appeal a report against their content. */

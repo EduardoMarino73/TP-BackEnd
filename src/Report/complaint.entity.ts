@@ -28,3 +28,42 @@ export class ContentReport {
         public details: string | null,
     ) { }
 }
+
+/** How many reports of one type a case has. */
+export type ReasonCount = { reportTypeId: number; reportType: string; count: number };
+
+/** Filters for listing moderation cases. */
+export type CaseFilters = {
+    id?: number;
+    status?: Complaint["status"];
+    reportTypeId?: number;
+    // only cases about content uploaded by this user
+    ownerId?: number;
+};
+
+/**
+ * A moderation case with what is needed to show it in a list or a detail:
+ * the reported content and its owner, the reasons grouped by type, and the appeal if there is one.
+ */
+export type ModerationCaseSummary = {
+    id: number;
+    targetType: ReportTargetType;
+    targetId: number;
+    reportCount: number;
+    status: Complaint["status"];
+    createdAt: Date;
+    content: {
+        title: string | null;
+        // 'active', 'suspended' or 'deleted'
+        state: string | null;
+        ownerId: number | null;
+        ownerUsername: string | null;
+    };
+    reasons: ReasonCount[];
+    appeal: {
+        id: number;
+        description: string;
+        reviewed: boolean;
+        decision: "approved" | "rejected" | null;
+    } | null;
+};

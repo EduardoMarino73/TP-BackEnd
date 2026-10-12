@@ -48,8 +48,14 @@ export const getReport = asyncHandler(async (req, res) => {
     const result = await reports.getReport(id);
     if (!result) return res.status(404).json({ message: "Report not found" });
     return res.json({
-        data: result.complaint,
+        // the case with its content, owner, grouped reasons and appeal
+        data: result.summary,
         reportCount: result.reportCount,
         reports: result.reports,
     });
+});
+
+/** Lists moderation cases for administrators, filtered by id, status and report type. */
+export const listReports = asyncHandler(async (_req, res) => {
+    return res.json({ data: await reports.listCases(res.locals.caseFilters) });
 });

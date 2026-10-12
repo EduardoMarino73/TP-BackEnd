@@ -1,6 +1,8 @@
 import { ResultSetHeader, RowDataPacket } from "mysql2";
 import { db } from "../Shared/database/connections.js";
-import { Complaint, ContentReport, ReportTargetType } from "./complaint.entity.js";
+import {
+    CaseFilters, Complaint, ContentReport, ModerationCaseSummary, ReasonCount, ReportTargetType,
+} from "./complaint.entity.js";
 
 type ComplaintRow = RowDataPacket & {
     id: number;
@@ -32,6 +34,43 @@ function toComplaint(row: ComplaintRow): Complaint {
         Number(row.report_count),
         row.status,
     );
+}
+
+/** A row of findCases: the case joined with its content, owner and appeal. */
+type CaseRow = ComplaintRow & {
+    created_at: Date;
+    title: string | null;
+    content_state: string | null;
+    owner_id: number | null;
+    owner_username: string | null;
+    appeal_id: number | null;
+    appeal_description: string | null;
+    appeal_reviewed: number | null;
+    appeal_decision: "approved" | "rejected" | null;
+};
+
+function toCaseSummary(row: CaseRow, reasons: ReasonCount[]): ModerationCaseSummary {
+    return {
+        id: row.id,
+        targetType: row.target_type,
+        targetId: row.target_id,
+        reportCount: Number(row.report_count),
+        status: row.status,
+        createdAt: row.created_at,
+        content: {
+            title: row.title,
+            state: row.content_state,
+            ownerId: row.owner_id,
+            ownerUsername: row.owner_username,
+        },
+        reasons,
+        appeal: row.appeal_id === null ? null : {
+            id: row.appeal_id,
+            description: row.appeal_description ?? "",
+            reviewed: Boolean(row.appeal_reviewed),
+            decision: row.appeal_decision,
+        },
+    };
 }
 
 function toContentReport(row: ContentReportRow): ContentReport {
@@ -236,6 +275,73 @@ export class ComplaintRepository {
             "UPDATE moderation_cases SET status = ? WHERE id = ?",
             [status, id],
         );
+    }
+
+    /**
+     * Lists moderation cases with their content, owner, appeal and reasons grouped by type.
+     * Every filter is optional; the newest cases come first.
+     */
+    async findCases(filters: CaseFilters = {}): Promise<ModerationCaseSummary[]> {
+        const conditions: string[] = [];
+        const params: Array<string | number> = [];
+        if (filters.id !== undefined) {
+            conditions.push("c.id = ?");
+            params.push(filters.id);
+        }
+        if (filters.status !== undefined) {
+            conditions.push("c.status = ?");
+            params.push(filters.status);
+        }
+        if (filters.ownerId !== undefined) {
+            conditions.push("COALESCE(m.id_author, s.id_author) = ?");
+            params.push(filters.ownerId);
+        }
+        if (filters.reportTypeId !== undefined) {
+            conditions.push(`EXISTS (SELECT 1 FROM content_reports AS fr
+                 WHERE fr.target_type = c.target_type AND fr.target_id = c.target_id
+                   AND fr.report_type_id = ?)`);
+            params.push(filters.reportTypeId);
+        }
+
+        const [rows] = await db.query<CaseRow[]>(
+            `SELECT c.id, c.target_type, c.target_id, c.report_count, c.status, c.created_at,
+                    COALESCE(m.title, s.title) AS title,
+                    COALESCE(m.state, s.state) AS content_state,
+                    u.id_user AS owner_id, u.user_name AS owner_username,
+                    a.id AS appeal_id, a.description AS appeal_description,
+                    a.reviewed AS appeal_reviewed, a.decision AS appeal_decision
+             FROM moderation_cases AS c
+             LEFT JOIN movies AS m ON c.target_type = 'movie' AND m.id = c.target_id
+             LEFT JOIN series AS s ON c.target_type = 'series' AND s.id = c.target_id
+             LEFT JOIN users AS u ON u.id_user = COALESCE(m.id_author, s.id_author)
+             LEFT JOIN content_appeals AS a ON a.moderation_case_id = c.id
+             ${conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""}
+             ORDER BY c.id DESC`,
+            params,
+        );
+        if (rows.length === 0) return [];
+
+        // reasons of every listed case, grouped by report type
+        const [reasonRows] = await db.query<(RowDataPacket & {
+            case_id: number; report_type_id: number; report_type: string; total: number;
+        })[]>(
+            `SELECT c.id AS case_id, t.id AS report_type_id, t.name AS report_type, COUNT(*) AS total
+             FROM moderation_cases AS c
+             JOIN content_reports AS r ON r.target_type = c.target_type AND r.target_id = c.target_id
+             JOIN report_types AS t ON t.id = r.report_type_id
+             WHERE c.id IN (?)
+             GROUP BY c.id, t.id, t.name
+             ORDER BY total DESC, t.name`,
+            [rows.map((row) => row.id)],
+        );
+        const reasons = new Map<number, ReasonCount[]>();
+        reasonRows.forEach((row) => {
+            const list = reasons.get(row.case_id) ?? [];
+            list.push({ reportTypeId: row.report_type_id, reportType: row.report_type, count: Number(row.total) });
+            reasons.set(row.case_id, list);
+        });
+
+        return rows.map((row) => toCaseSummary(row, reasons.get(row.id) ?? []));
     }
 
     /** Marks a case as awaiting administrator review. */
