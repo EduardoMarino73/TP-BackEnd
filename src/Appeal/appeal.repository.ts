@@ -111,6 +111,37 @@ export class AppealRepository {
     }
 
     /**
+     * Deletes an appeal that was not reviewed yet and puts its case back to 'pending',
+     * so the owner can appeal again. Returns false when it was reviewed in the meantime.
+     */
+    async withdraw(id: number): Promise<boolean> {
+        const connection = await db.getConnection();
+        try {
+            await connection.beginTransaction();
+            const [rows] = await connection.execute<AppealRow[]>(
+                `SELECT ${APPEAL_COLUMNS} FROM content_appeals WHERE id = ? AND reviewed = FALSE FOR UPDATE`,
+                [id],
+            );
+            if (!rows[0]) {
+                await connection.rollback();
+                return false;
+            }
+            await connection.execute("DELETE FROM content_appeals WHERE id = ?", [id]);
+            await connection.execute(
+                "UPDATE moderation_cases SET status = 'pending' WHERE id = ? AND status = 'appealed'",
+                [rows[0].report_id],
+            );
+            await connection.commit();
+            return true;
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    }
+
+    /**
      * Resolves an appeal and applies its moderation result atomically.
      * Rejecting the appeal upholds the complaint and suspends the content.
      */

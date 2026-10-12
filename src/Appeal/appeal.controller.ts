@@ -39,3 +39,15 @@ export const createAppeal = asyncHandler(async (req, res) => {
 
     return res.status(201).json({ data: result.appeal });
 });
+
+/** Withdraws a pending appeal of the authenticated viewer; the case can be appealed again. */
+export const withdrawAppeal = asyncHandler(async (req, res) => {
+    const appealId = Number(req.params.id);
+    if (!Number.isSafeInteger(appealId) || appealId < 1) {
+        return res.status(400).json({ message: "Invalid appeal id" });
+    }
+
+    const result = await reports.withdrawAppeal({ appealId, viewerId: req.user!.id_user });
+    if ("error" in result) return res.status(result.status).json({ message: result.error });
+    return res.sendStatus(204);
+});

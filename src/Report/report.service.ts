@@ -92,6 +92,27 @@ export class ReportService {
         return { appeal };
     }
 
+    /**
+     * Withdraws an appeal that an administrator has not reviewed yet.
+     * Only the owner of the reported content can do it.
+     */
+    async withdrawAppeal(input: { appealId: number; viewerId: number }): Promise<
+        { error: string; status: 403 | 404 | 409 } | { withdrawn: true }
+    > {
+        const appeal = await this.appeals.findOne(input.appealId);
+        if (!appeal) return { error: "Appeal not found" as const, status: 404 };
+
+        const report = await this.reports.findOne(appeal.reportId);
+        const target = report && await this.findTarget(report.targetType, report.targetId);
+        if (!target || target.id_author !== input.viewerId) {
+            return { error: "Only the content owner can withdraw this appeal" as const, status: 403 };
+        }
+        if (appeal.reviewed || !await this.appeals.withdraw(appeal.id)) {
+            return { error: "This appeal was already reviewed" as const, status: 409 };
+        }
+        return { withdrawn: true };
+    }
+
     private async findTarget(type: ReportTargetType, id: number) {
         return type === "movie"
             ? this.movies.findOne(id)
