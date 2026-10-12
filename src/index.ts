@@ -12,6 +12,7 @@ import { viewerRouter } from "./User_Folder/viewer/viewer.routes.js";
 import { administratorRouter } from "./User_Folder/administrator/administrator.routes.js";
 import { complaintRouter } from "./Report/complaint.routes.js";
 import { appealRouter } from "./Appeal/appeal.routes.js";
+import { reportTypeRouter } from "./Report_Type/report_type.routes.js";
 import { db } from "./Shared/database/connections.js";
 import { episodePath, moviePath } from "./Shared/database/content.Storage.js";
 import { config } from "./Shared/config.js";
@@ -74,6 +75,7 @@ app.use("/api/viewers", viewerRouter);
 app.use("/api/administrators", administratorRouter);
 app.use("/api/reports", complaintRouter);
 app.use("/api/appeals", appealRouter);
+app.use("/api/report-types", reportTypeRouter);
 
 // Fallback 404 handler for unrecognized routes
 app.use((_, res) => {

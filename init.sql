@@ -120,6 +120,24 @@ CREATE TABLE IF NOT EXISTS reviews (
     INDEX idx_reviews_viewer (viewer_id)
 ) ENGINE=InnoDB;
 
+-- Catalog of report reasons, managed by administrators (/api/report-types).
+-- A report picks one type; when requires_details is TRUE (e.g. "Other") it must also explain it.
+CREATE TABLE IF NOT EXISTS report_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    requires_details BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- Initial reasons (the ones the report form used before the catalog existed).
+INSERT IGNORE INTO report_types (name, requires_details) VALUES
+    ('Violence', FALSE),
+    ('Sexual content', FALSE),
+    ('Harassment and bullying', FALSE),
+    ('Hate speech and abuse', FALSE),
+    ('Dangerous or harmful activities', FALSE),
+    ('Other', TRUE);
+
 -- Individual reports. One viewer can report each content item only once.
 CREATE TABLE IF NOT EXISTS content_reports (
     id INT AUTO_INCREMENT PRIMARY KEY,
