@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { SeriesRepository } from "./series.repository.js";
 import { SeriesService } from "./series.service.js";
+import { sendOwnershipError } from "../Shared/ownership.js";
 
 /**
  * Controller layer responsible for handling incoming HTTP requests and responses for Series.
@@ -34,50 +35,36 @@ export const findOne = async (req: Request, res: Response) => {
 
 /**
  * POST /api/series
- * Creates a new series from sanitized body data.
+ * Creates a new series from sanitized body data. The uploader is the owner of the token.
  */
 export const create = async (req: Request, res: Response) => {
-    const serieInput = req.body.sanitizeSeriesInput;
-
-    // Verify all compulsory fields are provided
-    const requiredFields = ["id_author", "title", "category", "description"] as const;
-    const missingFields = requiredFields.filter((field) => serieInput[field] === undefined);
-
-    if (missingFields.length > 0) {
-        return res.status(400).json({
-            message: "Missing required series fields",
-            fields: missingFields,
-        });
-    }
-
-    const serie = await service.create(serieInput);
+    const serie = await service.create({
+        ...req.body.sanitizeSeriesInput,
+        id_author: req.user!.id_user,
+    });
     return res.status(201).json({ message: "serie created", data: serie });
 };
 
 /**
  * PUT /api/series/:id or PATCH /api/series/:id
- * Updates an existing series partially or completely.
+ * Updates title, category or description. Only the uploader can do it (403 otherwise).
  */
 export const update = async (req: Request, res: Response) => {
     const id = req.params.id as string;
-    const serie = await service.update(id, req.body.sanitizeSeriesInput);
+    const result = await service.update(id, req.body.sanitizeSeriesInput, req.user!.id_user);
 
-    if (!serie) {
-        return res.status(404).json({ message: "serie not found" });
-    }
-    return res.status(200).json({ message: "serie updated", data: serie });
+    if (sendOwnershipError(res, result, "serie not found")) return;
+    return res.status(200).json({ message: "serie updated", data: result.data });
 };
 
 /**
  * DELETE /api/series/:id
- * Removes a series from the database.
+ * Removes a series. Only the uploader can do it (403 otherwise).
  */
 export const remove = async (req: Request, res: Response) => {
     const id = req.params.id as string;
-    const result = await service.remove(id);
+    const result = await service.remove(id, req.user!.id_user);
 
-    if (!result) {
-        return res.status(500).json({ message: "internal error or serie not found" });
-    }
+    if (sendOwnershipError(res, result, "serie not found")) return;
     return res.status(200).json({ message: `serie with id: ${id} was removed` });
 };

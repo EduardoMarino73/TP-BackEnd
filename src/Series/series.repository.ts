@@ -79,7 +79,8 @@ export class SeriesRepository implements Repository<Serie> {
      */
     async update(id: number, input: Partial<Serie>): Promise<Serie | undefined> {
         // Whitelist allowed fields to prevent arbitrary or malicious column updates
-        const allowedFields = ["title", "description", "category", "id_author", "state"] as const;
+        // The author and the state are never changed through an edit
+        const allowedFields = ["title", "description", "category"] as const;
         const fields = allowedFields.filter((field) => input[field] !== undefined);
 
         // If no valid fields were supplied, simply return the current state of the series

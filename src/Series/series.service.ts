@@ -1,5 +1,12 @@
 import { Serie } from "./series.entity.js";
 import { Repository } from "../Shared/repository.js";
+import { OwnedResult, whenOwner } from "../Shared/ownership.js";
+
+/** Fields of a new series; the author comes from the token. */
+export type NewSerie = Pick<Serie, "id_author" | "title" | "category"> & { description?: string };
+
+/** Fields the uploader may change later. */
+export type SerieChanges = Partial<Pick<Serie, "title" | "category" | "description">>;
 
 /**
  * Service layer responsible for business logic regarding Series.
@@ -30,37 +37,34 @@ export class SeriesService {
 
     /**
      * Creates a new series entity and persists it via the repository.
+     * New series always start active.
      */
-    async create(input: Omit<Serie, "id">): Promise<Serie> {
+    async create(input: NewSerie): Promise<Serie> {
         const serie = new Serie(
             input.id_author,
             input.title,
             input.category,
-            input.description,
-            input.state
+            input.description ?? "",
+            "active"
         );
         return this.repo.create(serie);
     }
 
     /**
-     * Updates an existing series with partial data.
+     * Updates an existing series with partial data. Only its uploader can do it.
      */
-    update(id: string, input: Partial<Serie>): Promise<Serie | undefined> {
-        const serieId = Number(id);
-        if (!Number.isInteger(serieId) || serieId < 1) {
-            return Promise.resolve(undefined);
-        }
-        return this.repo.update(serieId, input);
+    async update(id: string, input: SerieChanges, userId: number): Promise<OwnedResult<Serie>> {
+        const serie = await this.findOne(id);
+        return whenOwner(serie, userId, (found) => this.repo.update(found.id!, input));
     }
 
     /**
-     * Removes a series by ID.
+     * Removes a series by ID. Only its uploader can do it.
      */
-    remove(id: string): Promise<boolean> {
-        const serieId = Number(id);
-        if (!Number.isInteger(serieId) || serieId < 1) {
-            return Promise.resolve(false);
-        }
-        return this.repo.delete(serieId);
+    async remove(id: string, userId: number): Promise<OwnedResult<true>> {
+        const serie = await this.findOne(id);
+        return whenOwner(serie, userId, async (found) => (
+            await this.repo.delete(found.id!) ? true : undefined
+        ));
     }
 }
