@@ -81,7 +81,8 @@ export class MovieRepository implements Repository<Movie> {
     }
 
     async update(id:number,input: Partial<Movie>): Promise<Movie | undefined> {
-        const allowedFields = ["id_author", "path", "title", "category", "views", "description", "state"] as const;
+        /* only the fields an uploader may edit: state, views, path and the author are never changed here */
+        const allowedFields = ["title", "category", "description"] as const;
         const fields = allowedFields.filter((field) => input[field] !== undefined);
         if (fields.length === 0) return this.findOne(id);
         

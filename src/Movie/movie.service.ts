@@ -1,7 +1,20 @@
 import { Movie } from "./movie.entity.js";
 import { Repository } from "../Shared/repository.js";
 import { getMoviePath } from "../Shared/database/content.Storage.js";
+import { OwnedResult, whenOwner } from "../Shared/ownership.js";
 import path from "path";
+
+/** Fields a viewer sends to upload a movie; the author comes from the token. */
+export type NewMovie = {
+    id_author: number;
+    path: string;
+    title: string;
+    category: string;
+    description?: string;
+};
+
+/** Fields the uploader may change later. */
+export type MovieChanges = Partial<Pick<Movie, "title" | "category" | "description">>;
 
 /*Here is where Im going to do all the bussines logic, like create a new movie or find one movie of the dbb*/
 
@@ -13,7 +26,6 @@ export class MovieService {
     }
 
     findOne(id:string): Promise<Movie | undefined>{
-        console.log("the service send the id to the repository");
         const movieId = Number(id);
         if (!Number.isInteger(movieId) || movieId < 1) return Promise.resolve(undefined);
         return this.repo.findOne(movieId);
@@ -23,39 +35,33 @@ export class MovieService {
         return path.resolve(getMoviePath(moviePath));
     }
 
-    async create(input:Omit<Movie, "report"|"id">): Promise<Movie>{
+    /** New movies always start active and with no views. */
+    async create(input: NewMovie): Promise<Movie>{
 
         const movie = new Movie(
             input.id_author,
             input.path,
             input.title,
             input.category,
-            input.views,
-            input.description,
-            input.state,
+            0,
+            input.description ?? "",
+            "active",
         );
 
         return this.repo.create(movie);
     }
 
-    update(id:string, input: Partial<Movie>): Promise<Movie | undefined> {
-        /*"...input" copy all the properties from input and make a new object, in this way I have a object with 
-        my id and all the properties like
-        
-        id,
-        title,
-        category,
-        ... etc*/
-
-        const id_Movie = Number(id);
-        if (!Number.isInteger(id_Movie) || id_Movie < 1) return Promise.resolve(undefined);
-        return this.repo.update(id_Movie,input);
+    /** Only the uploader can edit a movie. */
+    async update(id:string, input: MovieChanges, userId: number): Promise<OwnedResult<Movie>> {
+        const movie = await this.findOne(id);
+        return whenOwner(movie, userId, (found) => this.repo.update(found.id!, input));
     }
 
-   
-    remove(id: string): Promise<boolean> {
-        const movieId = Number(id);
-        if (!Number.isInteger(movieId) || movieId < 1) return Promise.resolve(false);
-        return this.repo.delete(movieId);
+    /** Only the uploader can delete a movie. */
+    async remove(id: string, userId: number): Promise<OwnedResult<true>> {
+        const movie = await this.findOne(id);
+        return whenOwner(movie, userId, async (found) => (
+            await this.repo.delete(found.id!) ? true : undefined
+        ));
     }
 }
