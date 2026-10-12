@@ -1,10 +1,11 @@
-import express from "express";
+import express, { NextFunction, Request, Response } from "express";
 import { movieRouter } from "./Movie/movie.routes.js";
 import { seriesRouter } from "./Series/series.routes.js";
 import { seasonRouter } from "./Season/season.routes.js";
 import { episodeRouter } from "./Episode/episode.routes.js";
 import cors from "cors";
 import path from "path";
+import multer from "multer";
 import { reviewRouter } from "./Review/review.routes.js";
 import { userRouter } from "./User_Folder/user.routes.js";
 import { viewerRouter } from "./User_Folder/viewer/viewer.routes.js";
@@ -76,6 +77,31 @@ app.use("/api/appeals", appealRouter);
 // Fallback 404 handler for unrecognized routes
 app.use((_, res) => {
     return res.status(404).send({ message: "source not found " });
+});
+
+/**
+ * Turns every error into a JSON { message } with the right status code.
+ * Express 5 also sends here the errors thrown by async controllers.
+ */
+app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    if (error instanceof multer.MulterError) {
+        if (error.code === "LIMIT_FILE_SIZE") {
+            return res.status(413).json({ message: "The file is too large" });
+        }
+        return res.status(400).json({ message: `Invalid upload: ${error.message}` });
+    }
+    // body-parser errors (invalid JSON...) and upload filter errors carry their own 4xx status
+    const { status, message, type } = error as { status?: unknown; message?: unknown; type?: unknown };
+    if (type === "entity.parse.failed") {
+        return res.status(400).json({ message: "The request body is not valid JSON" });
+    }
+    if (typeof status === "number" && status >= 400 && status < 500) {
+        return res.status(status).json({
+            message: typeof message === "string" ? message : "Invalid request",
+        });
+    }
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error" });
 });
 
 // Start listening for HTTP connections
