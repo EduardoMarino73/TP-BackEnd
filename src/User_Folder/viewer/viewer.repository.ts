@@ -6,6 +6,7 @@ import { ComplaintRepository } from "../../Report/complaint.repository.js";
 import { ReviewRepository } from "../../Review/review.repository.js";
 import { UserRepository } from "../user.repository.js";
 import { Viewer } from "./viewer.entity.js";
+import { ModerationCaseSummary } from "../../Report/complaint.entity.js";
 
 /** Loads viewer account and engagement data from the current database schema. */
 export class ViewerRepository {
@@ -42,5 +43,10 @@ export class ViewerRepository {
             uploadedAudiovisuals,
             reviews,
         );
+    }
+
+    /** Moderation cases about content this viewer uploaded, newest first. */
+    findReports(id: number): Promise<ModerationCaseSummary[]> {
+        return this.reports.findCases({ ownerId: id });
     }
 }

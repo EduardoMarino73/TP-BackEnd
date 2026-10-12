@@ -10,3 +10,10 @@ export function viewerProfile(req: Request, res: Response, next: NextFunction) {
         return res.json({ data: viewer });
     }).catch(next);
 }
+
+/** Returns the moderation cases about the authenticated viewer's content. */
+export function viewerReports(req: Request, res: Response, next: NextFunction) {
+    void service.findReports(req.user!.id_user)
+        .then((cases) => res.json({ data: cases }))
+        .catch(next);
+}
