@@ -8,6 +8,8 @@ export abstract class Audiovisual {
     public uploader_user_name?: string;
     /** URL path of the thumbnail image ("/thumbnails/..."), or null when there is none. */
     public thumbnail_path: string | null = null;
+    /** Length of the video in seconds, read by the frontend from the file; null for old content. */
+    public duration: number | null = null;
 
     protected constructor(
         public title: string,

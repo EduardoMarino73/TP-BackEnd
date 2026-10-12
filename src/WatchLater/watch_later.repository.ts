@@ -13,6 +13,7 @@ type WatchLaterRow = RowDataPacket & {
     category: string;
     description: string;
     thumbnail_path: string | null;
+    duration: number | null;
 };
 
 const toItem = (row: WatchLaterRow): WatchLaterItem => Object.assign(
@@ -22,6 +23,7 @@ const toItem = (row: WatchLaterRow): WatchLaterItem => Object.assign(
         category: row.category ?? "",
         description: row.description ?? "",
         thumbnail_path: row.thumbnail_path ?? null,
+        duration: row.duration === null ? null : Number(row.duration),
     },
 );
 
@@ -37,6 +39,7 @@ export class WatchLaterRepository {
                     COALESCE(m.title, s.title) AS title,
                     COALESCE(m.category, s.category) AS category,
                     COALESCE(m.description, s.description) AS description,
+                    m.duration,
                     COALESCE(m.thumbnail_path, s.thumbnail_path, (
                         SELECT e.thumbnail_path
                         FROM seasons AS se

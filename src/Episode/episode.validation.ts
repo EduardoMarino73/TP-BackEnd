@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { pickText, readFields, readPositiveInt, reject, TextRule } from "../Shared/validation.js";
+import { pickText, readDuration, readFields, readPositiveInt, reject, TextRule } from "../Shared/validation.js";
 import { thumbnailTooLarge, uploadedFile } from "../Shared/database/content.Storage.js";
 
 /* Text fields a viewer can send. The author comes from the token, and
@@ -26,8 +26,10 @@ export const sanitizeEpisodeInput = (req: Request, res: Response, next: NextFunc
     if ("error" in text) return reject(req, res, 400, text.error);
     if (!uploadedFile(req, "archivo")) return reject(req, res, 400, "A video file is required");
     if (thumbnailTooLarge(req)) return reject(req, res, 413, "The thumbnail is too large");
+    const duration = readDuration(data.duration);
+    if (duration === undefined) return reject(req, res, 400, "duration must be a number of seconds (up to 24 hours)");
 
-    req.body.sanitizeEpisodeInput = { id_season, episode_number, ...text.values };
+    req.body.sanitizeEpisodeInput = { id_season, episode_number, ...text.values, duration };
     next();
 };
 

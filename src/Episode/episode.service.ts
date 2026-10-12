@@ -8,6 +8,7 @@ import { OwnedResult, whenOwner } from "../Shared/ownership.js";
 export type NewEpisode = Pick<Episode, "id_season" | "episode_number" | "title" | "path" | "id_author"> & {
     description?: string;
     thumbnail_path?: string | null;
+    duration?: number | null;
 };
 
 /** Fields that can change in an episode. */
@@ -68,6 +69,7 @@ export class EpisodeService {
             "active"
         );
         episode.thumbnail_path = input.thumbnail_path ?? null;
+        episode.duration = input.duration ?? null;
         return whenOwner(serie, input.id_author, () => this.repo.create(episode));
     }
 

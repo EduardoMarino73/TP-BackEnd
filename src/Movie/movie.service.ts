@@ -12,6 +12,7 @@ export type NewMovie = {
     category: string;
     description?: string;
     thumbnail_path?: string | null;
+    duration?: number | null;
 };
 
 /** Fields the uploader may change later. */
@@ -49,6 +50,7 @@ export class MovieService {
             "active",
         );
         movie.thumbnail_path = input.thumbnail_path ?? null;
+        movie.duration = input.duration ?? null;
 
         return this.repo.create(movie);
     }

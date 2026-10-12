@@ -58,6 +58,19 @@ export function readPositiveInt(value: unknown): number | undefined {
         : undefined;
 }
 
+/** Longest duration accepted for a video: 24 hours, in seconds. */
+const MAX_DURATION_SECONDS = 24 * 60 * 60;
+
+/**
+ * Optional video duration, rounded to whole seconds. Returns null when it was not sent,
+ * and undefined when it was sent but is not a valid duration.
+ */
+export function readDuration(value: unknown): number | null | undefined {
+    if (value === undefined || value === null || value === "") return null;
+    const seconds = readPositiveInt(typeof value === "number" ? Math.round(value) : value);
+    return seconds !== undefined && seconds <= MAX_DURATION_SECONDS ? seconds : undefined;
+}
+
 /** Deletes the files multer saved for a request that is being rejected. */
 export function discardUploads(req: Request): void {
     const files = [

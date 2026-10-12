@@ -53,6 +53,8 @@ CREATE TABLE IF NOT EXISTS movies (
     path VARCHAR(255) NOT NULL,
     -- thumbnail image captured by the frontend ("/thumbnails/..."), NULL for old content
     thumbnail_path VARCHAR(255) NULL,
+    -- length in seconds, read by the frontend from the video; NULL for old content
+    duration INT NULL,
     category VARCHAR(100),
     views INT DEFAULT 0,
     description TEXT,
@@ -99,6 +101,7 @@ CREATE TABLE IF NOT EXISTS episodes (
     description TEXT,
     path VARCHAR(255) NOT NULL,
     thumbnail_path VARCHAR(255) NULL,
+    duration INT NULL,
     views INT DEFAULT 0,
     state VARCHAR(50) DEFAULT 'active',
     id_author INT NOT NULL,

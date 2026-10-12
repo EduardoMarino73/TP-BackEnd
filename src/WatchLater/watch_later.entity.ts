@@ -19,4 +19,6 @@ export type WatchLaterItem = WatchLater & {
     description: string;
     // movie thumbnail, or series cover (falling back to its first episode's thumbnail)
     thumbnail_path: string | null;
+    // movie length in seconds; null for series and old movies
+    duration: number | null;
 };

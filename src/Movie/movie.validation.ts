@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { pickText, readFields, reject, TextRule } from "../Shared/validation.js";
+import { pickText, readDuration, readFields, reject, TextRule } from "../Shared/validation.js";
 import { thumbnailTooLarge, uploadedFile } from "../Shared/database/content.Storage.js";
 
 export const sanitizeMoviePathInput = (req:Request,res:Response,next:NextFunction) => {
@@ -33,8 +33,10 @@ export const sanitizeMovieInput = (req:Request, res:Response, next:NextFunction)
     if ("error" in result) return reject(req, res, 400, result.error);
     if (!uploadedFile(req, "file")) return reject(req, res, 400, "A video file is required");
     if (thumbnailTooLarge(req)) return reject(req, res, 413, "The thumbnail is too large");
+    const duration = readDuration(data.duration);
+    if (duration === undefined) return reject(req, res, 400, "duration must be a number of seconds (up to 24 hours)");
 
-    req.body.sanitizeMovieInput = result.values;
+    req.body.sanitizeMovieInput = { ...result.values, duration };
     next()
 }
 
