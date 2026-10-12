@@ -4,6 +4,7 @@ import { EpisodeRepository } from "./episode.repository.js";
 import { EpisodeService } from "./episode.service.js";
 import fs from "fs";
 import path from "path";
+import { episodePath } from "../Shared/database/content.Storage.js";
 
 /**
  * Controller layer responsible for Episode endpoints, uploads, and video streaming.
@@ -124,7 +125,7 @@ export async function streamEpisode(req: Request, res: Response) {
     // Extract the filename from the path stored in the database (e.g. '/series/1723...mp4')
     const fileName = path.basename(episode.path);
     // Resolve the absolute path to the video file stored in the filesystem
-    const filePath = path.resolve("src/Shared/database/content/series", fileName);
+    const filePath = path.resolve(episodePath, fileName);
 
     // Inspect file existence and metadata
     let stat: fs.Stats;

@@ -3,6 +3,7 @@ import { MovieRepository } from "./movie.repository.js";
 import { MovieService } from "./movie.service.js";
 import fs from "fs";
 import path from "path";
+import { moviePath } from "../Shared/database/content.Storage.js";
 
 /*The controller takes care of handling the business logic that lets us put together a package
 with all the information we need to return to the FrontEnd */
@@ -101,7 +102,7 @@ export async function streamMovie(req: Request, res: Response) {
     // movie.path is stored as "/movies/167123-xyz.mp4"
     // convert it to the file's actual location on disk
     const fileName = path.basename(movie.path);
-    const filePath = path.resolve("src/Shared/database/content/movies", fileName);
+    const filePath = path.resolve(moviePath, fileName);
 
     //try to read the file metadata synchronously. If the file was deleted or doesn't exist at that path, catch the exception and return a 404
     let stat: fs.Stats;

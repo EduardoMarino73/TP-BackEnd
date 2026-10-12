@@ -1,9 +1,10 @@
 import { Request } from "express";
 import  fs  from "fs";
 import path from "path"
+import { config } from "../config.js";
 
-/**the path where save movies */
-export const BASE_PATH = path.resolve("src", "Shared", "database", "content");
+/** Folder where uploaded content is saved (CONTENT_DIR in .env). */
+export const BASE_PATH = config.contentDir;
 export const moviePath = path.join(BASE_PATH, "movies");
 export const episodePath = path.join(BASE_PATH, "series");
  

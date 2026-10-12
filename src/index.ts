@@ -12,11 +12,14 @@ import { administratorRouter } from "./User_Folder/administrator/administrator.r
 import { complaintRouter } from "./Report/complaint.routes.js";
 import { appealRouter } from "./Appeal/appeal.routes.js";
 import { db } from "./Shared/database/connections.js";
+import { episodePath, moviePath } from "./Shared/database/content.Storage.js";
+import { config } from "./Shared/config.js";
 import { RowDataPacket } from "mysql2";
 
 //start the server
 const app = express()
-app.use(cors());
+// Only the frontend origins listed in CORS_ORIGIN may call the API (any origin when it is empty).
+app.use(cors(config.corsOrigins.length > 0 ? { origin: config.corsOrigins } : undefined));
 
 // Parse incoming requests with JSON payloads
 app.use(express.json());
@@ -34,7 +37,7 @@ app.use("/movies", async (req, res, next) => {
     } catch (error) {
         return next(error);
     }
-}, express.static(path.resolve("src/Shared/database/content/movies")));
+}, express.static(moviePath));
 
 app.use("/series", async (req, res, next) => {
     try {
@@ -55,14 +58,7 @@ app.use("/series", async (req, res, next) => {
     } catch (error) {
         return next(error);
     }
-}, express.static(path.resolve("src/Shared/database/content/series")));
-
-const PORT = 3000;
-
-// Start listening for HTTP connections
-app.listen(PORT, () => {
-    console.log(`Server listening at port: ${PORT}`);
-});
+}, express.static(episodePath));
 
 // Register REST API routers
 app.use("/api/movie", movieRouter);
@@ -80,4 +76,9 @@ app.use("/api/appeals", appealRouter);
 // Fallback 404 handler for unrecognized routes
 app.use((_, res) => {
     return res.status(404).send({ message: "source not found " });
+});
+
+// Start listening for HTTP connections
+app.listen(config.port, () => {
+    console.log(`Server listening at port: ${config.port}`);
 });
