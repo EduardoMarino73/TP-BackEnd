@@ -1,38 +1,55 @@
 import { NextFunction, Request, Response } from "express";
+import { pickText, readFields, readPositiveInt, reject, TextRule } from "../Shared/validation.js";
+
+/* Text fields a viewer can send. The author comes from the token, and
+path, views and state are set by the server. */
+const EPISODE_TEXT: Record<string, TextRule> = {
+    title: { max: 255 },
+    description: { max: 5000, optional: true, allowEmpty: true },
+};
 
 /**
- * Middleware that extracts and cleanses episode payload attributes.
- * Handles FormData parsing when video binary and metadata are sent together.
+ * Middleware that validates a new episode.
+ * The JSON travels as a string inside req.body.data, next to the video file ("archivo").
  */
-export const sanitizeEpisodeInput = (req: Request, _res: Response, next: NextFunction) => {
-    let data: any = req.body;
+export const sanitizeEpisodeInput = (req: Request, res: Response, next: NextFunction) => {
+    const data = readFields(req);
+    if (!data) return reject(req, res, 400, "data must be a valid JSON object");
 
-    // Parse JSON string if sent within FormData (e.g. data field)
-    if (typeof req.body.data === "string") {
-        try {
-            data = JSON.parse(req.body.data);
-        } catch {
-            data = req.body;
-        }
+    const id_season = readPositiveInt(data.id_season);
+    if (!id_season) return reject(req, res, 400, "id_season must be a positive integer");
+    const episode_number = readPositiveInt(data.episode_number);
+    if (!episode_number) return reject(req, res, 400, "episode_number must be a positive integer");
+
+    const text = pickText(data, EPISODE_TEXT, "create");
+    if ("error" in text) return reject(req, res, 400, text.error);
+    if (!req.file) return res.status(400).json({ message: "A video file is required" });
+
+    req.body.sanitizeEpisodeInput = { id_season, episode_number, ...text.values };
+    next();
+};
+
+/**
+ * Middleware that validates an edit: episode_number, title and description
+ * (an episode cannot be moved to another season, and its file cannot change).
+ */
+export const sanitizeEpisodeUpdate = (req: Request, res: Response, next: NextFunction) => {
+    const data = readFields(req);
+    if (!data) return res.status(400).json({ message: "data must be a valid JSON object" });
+
+    const values: Record<string, string | number> = {};
+    if (data.episode_number !== undefined) {
+        const episode_number = readPositiveInt(data.episode_number);
+        if (!episode_number) return res.status(400).json({ message: "episode_number must be a positive integer" });
+        values.episode_number = episode_number;
     }
+    const text = pickText(data, { ...EPISODE_TEXT, title: { max: 255, optional: true } }, "create");
+    if ("error" in text) return res.status(400).json({ message: text.error });
+    Object.assign(values, text.values);
 
-    req.body.sanitizeEpisodeInput = {
-        id_season: data.id_season !== undefined ? Number(data.id_season) : undefined,
-        episode_number: data.episode_number !== undefined ? Number(data.episode_number) : undefined,
-        title: data.title,
-        description: data.description,
-        path: data.path,
-        id_author: data.id_author !== undefined ? Number(data.id_author) : undefined,
-        views: data.views !== undefined ? Number(data.views) : undefined,
-        state: data.state,
-    };
-
-    // Strip undefined properties to support partial updates
-    Object.keys(req.body.sanitizeEpisodeInput).forEach((key) => {
-        if (req.body.sanitizeEpisodeInput[key] === undefined) {
-            delete req.body.sanitizeEpisodeInput[key];
-        }
-    });
-
+    if (Object.keys(values).length === 0) {
+        return res.status(400).json({ message: "Send at least one field to change" });
+    }
+    req.body.sanitizeEpisodeInput = values;
     next();
 };

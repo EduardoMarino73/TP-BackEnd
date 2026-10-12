@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { SeasonRepository } from "./season.repository.js";
 import { SeasonService } from "./season.service.js";
+import { sendOwnershipError } from "../Shared/ownership.js";
 
 /**
  * Controller layer for Seasons. Orchestrates requests from Express and responses to clients.
@@ -40,43 +41,39 @@ export const findBySerie = async (req: Request, res: Response) => {
     return res.json(seasons);
 };
 
+/** MySQL error raised by the unique (series, season number) key. */
+const isDuplicate = (error: unknown) => (error as { code?: string }).code === "ER_DUP_ENTRY";
+const DUPLICATE_MESSAGE = "That season number already exists in this series";
+
 /**
  * POST /api/seasons
- * Creates a new season under a given series.
+ * Creates a new season under a series uploaded by the user (403 otherwise).
  */
 export const create = async (req: Request, res: Response) => {
-    const seasonInput = req.body.sanitizeSeasonInput;
-
-    const requiredFields = ["id_serie", "season_number", "description"] as const;
-    const missingFields = requiredFields.filter((field) => seasonInput[field] === undefined);
-
-    if (missingFields.length > 0) {
-        return res.status(400).json({
-            message: "Missing required season fields",
-            fields: missingFields,
-        });
-    }
-
     try {
-        const season = await service.create(seasonInput);
-        return res.status(201).json({ message: "season created", data: season });
-    } catch (error: any) {
-        return res.status(400).json({ message: error.message || "Failed to create season" });
+        const result = await service.create(req.body.sanitizeSeasonInput, req.user!.id_user);
+        if (sendOwnershipError(res, result, "serie not found")) return;
+        return res.status(201).json({ message: "season created", data: result.data });
+    } catch (error) {
+        if (isDuplicate(error)) return res.status(409).json({ message: DUPLICATE_MESSAGE });
+        throw error;
     }
 };
 
 /**
  * PUT /api/seasons/:id or PATCH /api/seasons/:id
- * Updates an existing season.
+ * Updates the number or the description of a season.
  */
 export const update = async (req: Request, res: Response) => {
     const id = req.params.id as string;
-    const season = await service.update(id, req.body.sanitizeSeasonInput);
-
-    if (!season) {
-        return res.status(404).json({ message: "season not found" });
+    try {
+        const result = await service.update(id, req.body.sanitizeSeasonInput, req.user!.id_user);
+        if (sendOwnershipError(res, result, "season not found")) return;
+        return res.status(200).json({ message: "season updated", data: result.data });
+    } catch (error) {
+        if (isDuplicate(error)) return res.status(409).json({ message: DUPLICATE_MESSAGE });
+        throw error;
     }
-    return res.status(200).json({ message: "season updated", data: season });
 };
 
 /**
@@ -85,10 +82,8 @@ export const update = async (req: Request, res: Response) => {
  */
 export const remove = async (req: Request, res: Response) => {
     const id = req.params.id as string;
-    const result = await service.remove(id);
+    const result = await service.remove(id, req.user!.id_user);
 
-    if (!result) {
-        return res.status(500).json({ message: "internal error or season not found" });
-    }
+    if (sendOwnershipError(res, result, "season not found")) return;
     return res.status(200).json({ message: `season with id: ${id} was removed` });
 };

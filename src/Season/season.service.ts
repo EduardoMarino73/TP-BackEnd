@@ -1,11 +1,23 @@
 import { Season } from "./season.entity.js";
 import { SeasonRepository } from "./season.repository.js";
+import { SeriesRepository } from "../Series/series.repository.js";
+import { OwnedResult, whenOwner } from "../Shared/ownership.js";
+
+/** Fields of a new season. */
+export type NewSeason = Pick<Season, "id_serie" | "season_number"> & { description?: string };
+
+/** Fields that can change in a season (it cannot move to another series). */
+export type SeasonChanges = Partial<Pick<Season, "season_number" | "description">>;
 
 /**
  * Service layer responsible for business rules and operations on Seasons.
+ * A season has no author of its own: the owner is the user who uploaded its series.
  */
 export class SeasonService {
-    public constructor(private repo: SeasonRepository) {}
+    public constructor(
+        private repo: SeasonRepository,
+        private series = new SeriesRepository(),
+    ) {}
 
     /**
      * Finds a season by ID, validating that the parameter is a valid integer.
@@ -34,32 +46,34 @@ export class SeasonService {
     }
 
     /**
-     * Creates a new season linked to a parent series.
+     * Creates a new season linked to a parent series that the user uploaded.
      */
-    async create(input: Omit<Season, "id">): Promise<Season> {
-        const season = new Season(
+    async create(input: NewSeason, userId: number): Promise<OwnedResult<Season>> {
+        const serie = await this.series.findOne(input.id_serie);
+        return whenOwner(serie, userId, () => this.repo.create(new Season(
             input.id_serie,
             input.season_number,
-            input.description
-        );
-        return this.repo.create(season);
+            input.description ?? ""
+        )));
     }
 
     /**
-     * Updates an existing season with partial fields.
+     * Updates an existing season with partial fields. Only the series' uploader can do it.
      */
-    update(id: string, input: Partial<Season>): Promise<Season | undefined> {
-        const seasonId = Number(id);
-        if (!Number.isInteger(seasonId) || seasonId < 1) return Promise.resolve(undefined);
-        return this.repo.update(seasonId, input);
+    async update(id: string, input: SeasonChanges, userId: number): Promise<OwnedResult<Season>> {
+        const season = await this.findOne(id);
+        const serie = season && await this.series.findOne(season.id_serie);
+        return whenOwner(serie, userId, () => this.repo.update(season!.id!, input));
     }
 
     /**
-     * Deletes a season by ID.
+     * Deletes a season by ID. Only the series' uploader can do it.
      */
-    remove(id: string): Promise<boolean> {
-        const seasonId = Number(id);
-        if (!Number.isInteger(seasonId) || seasonId < 1) return Promise.resolve(false);
-        return this.repo.delete(seasonId);
+    async remove(id: string, userId: number): Promise<OwnedResult<true>> {
+        const season = await this.findOne(id);
+        const serie = season && await this.series.findOne(season.id_serie);
+        return whenOwner(serie, userId, async () => (
+            await this.repo.delete(season!.id!) ? true : undefined
+        ));
     }
 }

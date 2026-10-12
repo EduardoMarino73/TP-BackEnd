@@ -77,7 +77,8 @@ export class SeasonRepository implements Repository<Season> {
      * Partially or fully updates a season record in the database.
      */
     async update(id: number, input: Partial<Season>): Promise<Season | undefined> {
-        const allowedFields = ["id_serie", "season_number", "description"] as const;
+        // A season cannot be moved to another series through an edit
+        const allowedFields = ["season_number", "description"] as const;
         const fields = allowedFields.filter((field) => input[field] !== undefined);
         if (fields.length === 0) return this.findOne(id);
 

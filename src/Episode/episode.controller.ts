@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { EpisodeRepository } from "./episode.repository.js";
 
 import { EpisodeService } from "./episode.service.js";
+import { sendOwnershipError } from "../Shared/ownership.js";
+import { discardUploads } from "../Shared/validation.js";
 import fs from "fs";
 import path from "path";
 import { episodePath } from "../Shared/database/content.Storage.js";
@@ -44,49 +46,48 @@ export const findBySeason = async (req: Request, res: Response) => {
     return res.json(episodes);
 };
 
+/** MySQL error raised by the unique (season, episode number) key. */
+const isDuplicate = (error: unknown) => (error as { code?: string }).code === "ER_DUP_ENTRY";
+const DUPLICATE_MESSAGE = "That episode number already exists in this season";
+
 /**
  * POST /api/episodes
- * Handles episode creation along with optional video file upload via Multer.
+ * Saves a new episode with its video file, in a season of a series the user uploaded.
+ * If anything fails, the uploaded file is deleted.
  */
 export const create = async (req: Request, res: Response) => {
-    const episodeInput = req.body.sanitizeEpisodeInput;
-
-    // If a video file was uploaded via Multer, assign its server route path
-    if (req.file) {
-        episodeInput.path = `/series/${req.file.filename}`;
-    }
-
-    // Validate presence of required properties
-    const requiredFields = ["id_season", "episode_number", "title", "description", "path", "id_author"] as const;
-    const missingFields = requiredFields.filter((field) => episodeInput[field] === undefined);
-
-    if (missingFields.length > 0) {
-        return res.status(400).json({
-            message: "Missing required episode fields",
-            fields: missingFields,
-        });
-    }
-
     try {
-        const episode = await service.create(episodeInput);
-        return res.status(201).json({ message: "episode created", data: episode });
-    } catch (error: any) {
-        return res.status(400).json({ message: error.message || "Failed to create episode" });
+        const result = await service.create({
+            ...req.body.sanitizeEpisodeInput,
+            // use the exact filename multer saved on disk
+            path: `/series/${req.file!.filename}`,
+            // the uploader is whoever owns the token, never a field of the request
+            id_author: req.user!.id_user,
+        });
+        if ("error" in result) discardUploads(req);
+        if (sendOwnershipError(res, result, "season not found")) return;
+        return res.status(201).json({ message: "episode created", data: result.data });
+    } catch (error) {
+        discardUploads(req);
+        if (isDuplicate(error)) return res.status(409).json({ message: DUPLICATE_MESSAGE });
+        throw error;
     }
 };
 
 /**
  * PUT /api/episodes/:id or PATCH /api/episodes/:id
- * Updates an existing episode record.
+ * Updates the number, title or description of an episode.
  */
 export const update = async (req: Request, res: Response) => {
     const id = req.params.id as string;
-    const episode = await service.update(id, req.body.sanitizeEpisodeInput);
-
-    if (!episode) {
-        return res.status(404).json({ message: "episode not found" });
+    try {
+        const result = await service.update(id, req.body.sanitizeEpisodeInput, req.user!.id_user);
+        if (sendOwnershipError(res, result, "episode not found")) return;
+        return res.status(200).json({ message: "episode updated", data: result.data });
+    } catch (error) {
+        if (isDuplicate(error)) return res.status(409).json({ message: DUPLICATE_MESSAGE });
+        throw error;
     }
-    return res.status(200).json({ message: "episode updated", data: episode });
 };
 
 /**
@@ -95,11 +96,9 @@ export const update = async (req: Request, res: Response) => {
  */
 export const remove = async (req: Request, res: Response) => {
     const id = req.params.id as string;
-    const result = await service.remove(id);
+    const result = await service.remove(id, req.user!.id_user);
 
-    if (!result) {
-        return res.status(500).json({ message: "internal error or episode not found" });
-    }
+    if (sendOwnershipError(res, result, "episode not found")) return;
     return res.status(200).json({ message: `episode with id: ${id} was removed` });
 };
 

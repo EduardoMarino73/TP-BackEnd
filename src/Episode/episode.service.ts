@@ -1,13 +1,28 @@
 import { Episode } from "./episode.entity.js";
 import { Repository } from "../Shared/repository.js";
+import { SeasonRepository } from "../Season/season.repository.js";
+import { SeriesRepository } from "../Series/series.repository.js";
+import { OwnedResult, whenOwner } from "../Shared/ownership.js";
+
+/** Fields of a new episode; the author comes from the token and the path from the uploaded file. */
+export type NewEpisode = Pick<Episode, "id_season" | "episode_number" | "title" | "path" | "id_author"> & {
+    description?: string;
+};
+
+/** Fields that can change in an episode. */
+export type EpisodeChanges = Partial<Pick<Episode, "episode_number" | "title" | "description">>;
 
 /**
  * Service layer for Episode business logic.
  */
 export class EpisodeService {
-    public constructor(private repo: Repository<Episode> & { 
-        findBySeason(id_season: number): Promise<Episode[]> 
-    }) {}
+    public constructor(
+        private repo: Repository<Episode> & {
+            findBySeason(id_season: number): Promise<Episode[]>
+        },
+        private seasons = new SeasonRepository(),
+        private series = new SeriesRepository(),
+    ) {}
 
     /**
      * Looks up an episode by ID with integer validation.
@@ -35,37 +50,39 @@ export class EpisodeService {
     }
 
     /**
-     * Constructs and saves a new Episode entity.
+     * Saves a new episode in a season of a series that the uploader owns.
+     * New episodes always start active and with no views.
      */
-    async create(input: Omit<Episode, "id">): Promise<Episode> {
-        const episode = new Episode(
+    async create(input: NewEpisode): Promise<OwnedResult<Episode>> {
+        const season = await this.seasons.findOne(input.id_season);
+        const serie = season && await this.series.findOne(season.id_serie);
+        return whenOwner(serie, input.id_author, () => this.repo.create(new Episode(
             input.id_season,
             input.episode_number,
             input.title,
-            input.description,
+            input.description ?? "",
             input.path,
             input.id_author,
-            input.views ?? 0,
-            input.state ?? "active"
-        );
-        return this.repo.create(episode);
+            0,
+            "active"
+        )));
     }
 
     /**
-     * Updates an existing episode with partial data.
+     * Updates an existing episode with partial data. Only its uploader can do it.
      */
-    update(id: string, input: Partial<Episode>): Promise<Episode | undefined> {
-        const episodeId = Number(id);
-        if (!Number.isInteger(episodeId) || episodeId < 1) return Promise.resolve(undefined);
-        return this.repo.update(episodeId, input);
+    async update(id: string, input: EpisodeChanges, userId: number): Promise<OwnedResult<Episode>> {
+        const episode = await this.findOne(id);
+        return whenOwner(episode, userId, (found) => this.repo.update(found.id!, input));
     }
 
     /**
-     * Removes an episode by ID.
+     * Removes an episode by ID. Only its uploader can do it.
      */
-    remove(id: string): Promise<boolean> {
-        const episodeId = Number(id);
-        if (!Number.isInteger(episodeId) || episodeId < 1) return Promise.resolve(false);
-        return this.repo.delete(episodeId);
+    async remove(id: string, userId: number): Promise<OwnedResult<true>> {
+        const episode = await this.findOne(id);
+        return whenOwner(episode, userId, async (found) => (
+            await this.repo.delete(found.id!) ? true : undefined
+        ));
     }
 }

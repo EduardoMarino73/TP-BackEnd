@@ -118,7 +118,8 @@ export class EpisodeRepository implements Repository<Episode> {
      * Partially updates an episode row.
      */
     async update(id: number, input: Partial<Episode>): Promise<Episode | undefined> {
-        const allowedFields = ["id_season", "episode_number", "title", "description", "path", "views", "state", "id_author"] as const;
+        /* only the fields an uploader may edit: the season, file, views, state and author never change here */
+        const allowedFields = ["episode_number", "title", "description"] as const;
         const fields = allowedFields.filter((field) => input[field] !== undefined);
         if (fields.length === 0) return this.findOne(id);
 
