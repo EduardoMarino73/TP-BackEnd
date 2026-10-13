@@ -1,56 +1,40 @@
-# Tracking de features, bugs e issues
+# Tracking of features, bugs and issues
 
-> 📄 **Archivo compartido:** está copiado igual en [cineweb-frontend](https://github.com/liamlucca/cineweb-frontend) y [TP-BackEnd](https://github.com/EduardoMarino73/TP-BackEnd), en `docs/`. Si lo cambiás, cambialo en los dos.
+> 📄 **Shared file:** an identical copy lives in [cineweb-frontend](https://github.com/liamlucca/cineweb-frontend) and [TP-BackEnd](https://github.com/EduardoMarino73/TP-BackEnd), under `docs/`. If you change it, change both.
 
-> ⏳ **Parte a completar por el equipo:** la metodología y el tablero. El tablero y los issues se
-> crean en GitHub; acá no se creó nada automáticamente. Cuando existan, reemplazar los
-> "_pendiente_" por los links reales.
+- **Frontend issues:** https://github.com/liamlucca/cineweb-frontend/issues
+- **Backend issues:** https://github.com/EduardoMarino73/TP-BackEnd/issues
 
-- **Metodología:** _pendiente (por ejemplo Kanban, o Scrum con sprints de 2 semanas)._
-- **Tablero (GitHub Projects):** _pendiente_
-- **Issues del frontend:** https://github.com/liamlucca/cineweb-frontend/issues
-- **Issues del backend:** https://github.com/EduardoMarino73/TP-BackEnd/issues
+## Feature status
 
-## Estado de las features
+Every feature needs both the frontend and the backend. The dates come from the frontend's git
+history (`liam` branch); see [progress.md](progress.md).
 
-Cada feature necesita el frontend y el backend. Las fechas salen del historial de git del
-frontend (rama `liam`); ver [avance.md](avance.md).
-
-| Feature | Requisito de la propuesta | Estado | Hecha en |
+| Feature | Proposal requirement | Status | Done in |
 |---|---|---|---|
-| Ingreso, registro y rutas protegidas por rol | CRUD Usuario, login | ✅ | 06/2026 y 05–09/10/2026 |
-| Perfil: consulta y edición | CRUD Usuario | ✅ | 09/10/2026 |
-| Activar y desactivar cuentas, crear administradores | CRUD Usuario, CRUD Administrador | ✅ | 09/10/2026 |
-| Subir, ver, editar y borrar películas (borrado lógico) | CRUD Audiovisual | ✅ | 04–08/2026 y 10/2026 |
-| Series con temporadas y episodios: alta, edición y borrado | CRUD Audiovisual | ✅ | 07–12/10/2026 |
-| Miniatura y duración obtenidas en el navegador | Alcance adicional | ✅ | 12/10/2026 |
-| Catálogo de motivos de denuncia | CRUD Tipo Reporte | ✅ | 12/10/2026 |
-| Denunciar un video (motivo + detalle) | CRUD Denuncia | ✅ | 06/2026 y 12/10/2026 |
-| Listado de denuncias con filtros y detalle | Listado + detalle 2, CUU "Buscar los datos de una Denuncia" | ✅ | 12/10/2026 |
-| Apelar, retirar una apelación y resolverla | CRUD Apelación, alcance adicional | ✅ | 09–12/10/2026 |
-| "Denuncias sobre mi contenido" | Alcance adicional | ✅ | 12/10/2026 |
-| Búsqueda por título, tipo y categoría, con detalle | Listado + detalle 1 | ✅ | 06/2026 y 09/10/2026 |
-| "Me gusta" / "No me gusta" | CUU valoración | ✅ | 09/10/2026 |
-| "Ver más tarde" | CUU "Ver más tarde" | ✅ | 12/10/2026 |
+| Login, sign-up and routes protected by role | User CRUD, login | ✅ | 2026-06 and 2026-10-05 to 2026-10-09 |
+| Profile: view and edit | User CRUD | ✅ | 2026-10-09 |
+| Activate and deactivate accounts, create administrators | User CRUD, Administrator CRUD | ✅ | 2026-10-09 |
+| Upload, watch, edit and delete movies (logical delete) | Audiovisual CRUD | ✅ | 2026-04 to 2026-08 and 2026-10 |
+| Series with seasons and episodes: create, edit and delete | Audiovisual CRUD | ✅ | 2026-10-07 to 2026-10-12 |
+| Thumbnail and duration read in the browser | Voluntary scope | ✅ | 2026-10-12 |
+| Report reasons catalog | Report Type CRUD | ✅ | 2026-10-12 |
+| Report a video (reason + details) | Report CRUD | ✅ | 2026-06 and 2026-10-12 |
+| List of reports with filters and detail | List + detail 2, use case "Look up a report's data" | ✅ | 2026-10-12 |
+| Appeal, withdraw an appeal and resolve it | Appeal CRUD, voluntary scope | ✅ | 2026-10-09 to 2026-10-12 |
+| "Reports about my content" | Voluntary scope | ✅ | 2026-10-12 |
+| Search by title, type and category, with detail | List + detail 1 | ✅ | 2026-06 and 2026-10-09 |
+| "Like" / "Dislike" | Use case "Rate with Like / Dislike" | ✅ | 2026-10-09 |
+| "Watch later" | Use case "Add audiovisual content to Watch later" | ✅ | 2026-10-12 |
 
-## Pendientes conocidos
+## Known issues and future work
 
-| Pendiente | Tipo | Entrega |
+| Item | Type | Delivery |
 |---|---|---|
-| Historial de apelaciones con cambio de veredicto (boceto C): falta el endpoint en el backend | feature | aprobación |
-| Test end-to-end | tarea | aprobación |
-| Filtrar por director (el backend no tiene ese campo) | feature | a definir |
-| Las páginas de series no verifican que la temporada pertenezca a la serie de la URL | bug | a definir |
+| Appeal history with verdict changes (sketch C): the backend endpoint is missing | feature | approval |
+| End-to-end test | task | approval |
+| Filter by director (the backend has no such field) | feature | not scheduled |
+| The series pages do not check that the season belongs to the series in the URL | bug | not scheduled |
 
-Más detalle técnico en el manual del frontend (`docs/MANUAL.md` de
-[cineweb-frontend](https://github.com/liamlucca/cineweb-frontend), sección 4.9).
-
-## Cómo cargar esto en GitHub
-
-1. En GitHub: **Projects → New project → Board**, con las columnas **Backlog**, **To do**,
-   **In progress**, **Done**. Agregar los dos repositorios.
-2. Crear un issue por cada fila de las tablas de arriba (las hechas, cerradas con el link al
-   commit; las pendientes, abiertas) y agregarlo al tablero.
-3. Desde ahora: un issue por feature o bug, y mencionarlo en el commit o PR (`Closes #12`) para
-   que GitHub los vincule.
-4. Dar acceso de lectura a los docentes.
+More technical detail in the frontend's manual (`docs/MANUAL.md` in
+[cineweb-frontend](https://github.com/liamlucca/cineweb-frontend), section 4.9).
