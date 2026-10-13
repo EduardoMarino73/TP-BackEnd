@@ -6,6 +6,8 @@ and administrators moderate reports and appeals. DSW course project.
 Express 5 + TypeScript + MySQL (`mysql2`, Repository pattern). The frontend is
 [cineweb-frontend](https://github.com/liamlucca/cineweb-frontend).
 
+**Documentation** (proposal, PRs, progress log, minutes, tracking): [docs/](docs/README.md).
+
 ## Quick start
 
 Requirements: Node.js 20+, pnpm and MySQL 8.
