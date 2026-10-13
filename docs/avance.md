@@ -93,8 +93,7 @@ Los conteos incluyen los commits de merge.
 - **Backend** (12/10, Liam): token obligatorio para escribir contenido y reseñas, errores en JSON,
   subidas con nombre único, límite de tamaño y control de tipo, borrado lógico, catálogo de motivos
   de denuncia, listado de denuncias con filtros, "Denuncias sobre mi contenido", retiro de
-  apelaciones, "Ver más tarde", miniaturas y duración. _(Al 13/10 estos 19 commits estaban solo en
-  el repositorio local, sin subir a GitHub.)_
+  apelaciones, "Ver más tarde", miniaturas y duración.
 - **Fork del TP** (06/10, Candy-Ram): actualización de `proposal.md`.
 
 El detalle de cada cambio está en el historial de git (`git log liam`).
