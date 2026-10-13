@@ -9,6 +9,32 @@ CREATE DATABASE IF NOT EXISTS che_netflix
 
 USE che_netflix;
 
+-- Shared identity for viewers and administrators. Registering over the API
+-- always creates a viewer; promote the first administrator explicitly:
+-- UPDATE users SET role = 'administrator' WHERE email = 'admin@example.com';
+CREATE TABLE IF NOT EXISTS users (
+    id_user INT AUTO_INCREMENT PRIMARY KEY,
+    user_name VARCHAR(50) NOT NULL UNIQUE,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(254) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role ENUM('viewer', 'administrator') NOT NULL DEFAULT 'viewer',
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    expires_at DATETIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_sessions_user (user_id),
+    INDEX idx_user_sessions_expiry (expires_at),
+    CONSTRAINT fk_user_sessions_user FOREIGN KEY (user_id) REFERENCES users(id_user) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- OPTIONAL RESET: "CREATE TABLE IF NOT EXISTS" does not update a table that
 -- already exists. If your tables were created with an older version of this
 -- script (e.g. a missing column causes a 500 error), uncomment these lines
@@ -19,11 +45,16 @@ USE che_netflix;
 -- DROP TABLE IF EXISTS series;
 -- DROP TABLE IF EXISTS movies;
 
--- Create the movies table
+-- Create the movies table. state is 'active', 'suspended' (by moderation) or 'deleted'
+-- (by its uploader: deleting is logical, the row and the file are kept).
 CREATE TABLE IF NOT EXISTS movies (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     path VARCHAR(255) NOT NULL,
+    -- thumbnail image captured by the frontend ("/thumbnails/..."), NULL for old content
+    thumbnail_path VARCHAR(255) NULL,
+    -- length in seconds, read by the frontend from the video; NULL for old content
+    duration INT NULL,
     category VARCHAR(100),
     views INT DEFAULT 0,
     description TEXT,
@@ -39,23 +70,29 @@ CREATE TABLE IF NOT EXISTS series (
     title VARCHAR(255) NOT NULL,
     description TEXT,
     category VARCHAR(100),
+    -- optional cover; without it the API uses the first episode's thumbnail
+    thumbnail_path VARCHAR(255) NULL,
     id_author INT NOT NULL,
     state VARCHAR(50) DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- Create the seasons table
+-- Create the seasons table.
+-- Deleting is logical (state = 'deleted'). active_number is the season number while the
+-- season is active and NULL after it is deleted, so a deleted number can be used again.
 CREATE TABLE IF NOT EXISTS seasons (
     id INT AUTO_INCREMENT PRIMARY KEY,
     id_serie INT NOT NULL,
     season_number INT NOT NULL,
     description TEXT,
+    state VARCHAR(50) NOT NULL DEFAULT 'active',
+    active_number INT AS (IF(state = 'active', season_number, NULL)) STORED,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_serie) REFERENCES series(id) ON DELETE CASCADE,
-    UNIQUE KEY uq_serie_season (id_serie, season_number)
+    UNIQUE KEY uq_serie_season (id_serie, active_number)
 ) ENGINE=InnoDB;
 
--- Create the episodes table
+-- Create the episodes table. Deleting is logical (state = 'deleted').
 CREATE TABLE IF NOT EXISTS episodes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     id_season INT NOT NULL,
@@ -63,18 +100,21 @@ CREATE TABLE IF NOT EXISTS episodes (
     title VARCHAR(255) NOT NULL,
     description TEXT,
     path VARCHAR(255) NOT NULL,
+    thumbnail_path VARCHAR(255) NULL,
+    duration INT NULL,
     views INT DEFAULT 0,
     state VARCHAR(50) DEFAULT 'active',
     id_author INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- episode number while the episode is active, NULL once it is deleted (see seasons)
+    active_number INT AS (IF(state = 'active', episode_number, NULL)) STORED,
     FOREIGN KEY (id_season) REFERENCES seasons(id) ON DELETE CASCADE,
-    UNIQUE KEY uq_season_episode (id_season, episode_number)
+    UNIQUE KEY uq_season_episode (id_season, active_number)
 ) ENGINE=InnoDB;
 
 -- Viewer ratings for movies and episodes. audiovisual_type disambiguates IDs,
 -- since each content table currently has its own auto-increment sequence.
--- viewer_id points to the viewer/user identity from the domain model; this
--- project does not yet define a users table to reference with a foreign key.
+-- viewer_id points to the viewer account in users.
 CREATE TABLE IF NOT EXISTS reviews (
     id INT AUTO_INCREMENT PRIMARY KEY,
     viewer_id INT NOT NULL,
@@ -86,5 +126,87 @@ CREATE TABLE IF NOT EXISTS reviews (
     UNIQUE KEY uq_review_viewer_audiovisual (viewer_id, audiovisual_type, audiovisual_id),
     INDEX idx_reviews_audiovisual (audiovisual_type, audiovisual_id),
     INDEX idx_reviews_viewer (viewer_id)
+) ENGINE=InnoDB;
+
+-- Each viewer's "Watch later" list: movies and whole series saved to watch later.
+-- audiovisual_type tells whether audiovisual_id is a movie or a series.
+CREATE TABLE IF NOT EXISTS watch_later (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    viewer_id INT NOT NULL,
+    audiovisual_id INT NOT NULL,
+    audiovisual_type ENUM('movie', 'series') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_watch_later_item (viewer_id, audiovisual_type, audiovisual_id),
+    CONSTRAINT fk_watch_later_viewer FOREIGN KEY (viewer_id)
+        REFERENCES users(id_user) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Catalog of report reasons, managed by administrators (/api/report-types).
+-- A report picks one type; when requires_details is TRUE (e.g. "Other") it must also explain it.
+CREATE TABLE IF NOT EXISTS report_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    requires_details BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- Initial reasons (the ones the report form used before the catalog existed).
+INSERT IGNORE INTO report_types (name, requires_details) VALUES
+    ('Violence', FALSE),
+    ('Sexual content', FALSE),
+    ('Harassment and bullying', FALSE),
+    ('Hate speech and abuse', FALSE),
+    ('Dangerous or harmful activities', FALSE),
+    ('Other', TRUE);
+
+-- Individual reports. One viewer can report each content item only once.
+-- Each report has one type from report_types and an optional explanation (details),
+-- which is required when the type has requires_details.
+CREATE TABLE IF NOT EXISTS content_reports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    target_type ENUM('movie', 'series') NOT NULL,
+    target_id INT NOT NULL,
+    reporter_id INT NOT NULL,
+    report_type_id INT NOT NULL,
+    details VARCHAR(1000) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_content_report_reporter_target (reporter_id, target_type, target_id),
+    INDEX idx_content_reports_target (target_type, target_id),
+    INDEX idx_content_reports_reporter (reporter_id),
+    INDEX idx_content_reports_type (report_type_id),
+    CONSTRAINT fk_content_reports_reporter FOREIGN KEY (reporter_id)
+        REFERENCES users(id_user) ON DELETE CASCADE,
+    CONSTRAINT fk_content_reports_type FOREIGN KEY (report_type_id)
+        REFERENCES report_types(id)
+) ENGINE=InnoDB;
+
+-- One moderation case is generated when an item first reaches three reports.
+CREATE TABLE IF NOT EXISTS moderation_cases (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    target_type ENUM('movie', 'series') NOT NULL,
+    target_id INT NOT NULL,
+    report_count INT NOT NULL,
+    status ENUM('pending', 'appealed', 'upheld', 'dismissed') NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_moderation_case_content (target_type, target_id),
+    INDEX idx_moderation_case_status (status, id)
+) ENGINE=InnoDB;
+
+-- Content owners can appeal a moderation case. Administrators decide whether
+-- to uphold or dismiss that case.
+CREATE TABLE IF NOT EXISTS content_appeals (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    description VARCHAR(2000) NOT NULL,
+    moderation_case_id INT NOT NULL UNIQUE,
+    administrator_id INT NULL,
+    reviewed BOOLEAN NOT NULL DEFAULT FALSE,
+    decision ENUM('approved', 'rejected') NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at TIMESTAMP NULL,
+    INDEX idx_content_appeals_review_queue (reviewed, id),
+    CONSTRAINT fk_content_appeals_case FOREIGN KEY (moderation_case_id)
+        REFERENCES moderation_cases(id) ON DELETE CASCADE,
+    CONSTRAINT fk_content_appeals_administrator FOREIGN KEY (administrator_id)
+        REFERENCES users(id_user) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 

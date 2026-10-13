@@ -1,8 +1,9 @@
 import { NextFunction, Request, Response } from "express";
-import { movieTitle } from "../Shared/database/content.Storage.js";
+import { pickText, readDuration, readFields, reject, TextRule } from "../Shared/validation.js";
+import { thumbnailTooLarge, uploadedFile } from "../Shared/database/content.Storage.js";
 
 export const sanitizeMoviePathInput = (req:Request,res:Response,next:NextFunction) => {
-    const data = req.body.data ? JSON.parse(req.body.data) : {};
+    const data = readFields(req) ?? {};
 
     req.body.sanitizeMoviePathInput = {
         path: data.path
@@ -15,29 +16,38 @@ export const sanitizeMoviePathInput = (req:Request,res:Response,next:NextFunctio
     next()
 }
 
-export const sanitizeMovieInput = (req:Request, res:Response,next:NextFunction) => {
+/* The only fields a viewer can send. The author comes from the token, and
+views, state and path are set by the server, so they are never read from the request. */
+const MOVIE_FIELDS: Record<string, TextRule> = {
+    title: { max: 255 },
+    category: { max: 100 },
+    description: { max: 5000, optional: true, allowEmpty: true },
+};
 
-    // when it comes WITH a video file (e.g. in UploadPage): the JSON travels as a string inside req.body.data
-    // when it comes WITHOUT a video file (e.g. in MyVideosPage): req.body already carries the fields directly
-    const data = req.body.data ? JSON.parse(req.body.data) : req.body;
+/** Validates a new movie: the JSON travels as a string inside req.body.data, next to the video file. */
+export const sanitizeMovieInput = (req:Request, res:Response, next:NextFunction) => {
+    const data = readFields(req);
+    if (!data) return reject(req, res, 400, "data must be a valid JSON object");
 
-    req.body.sanitizeMovieInput = {
-        id_author: data.id_author,
-        title: data.title,
-        category: data.category,
-        views: data.views,
-        description: data.description,
-        report: data.report,
-        state: data.state
-    }
+    const result = pickText(data, MOVIE_FIELDS, "create");
+    if ("error" in result) return reject(req, res, 400, result.error);
+    if (!uploadedFile(req, "file")) return reject(req, res, 400, "A video file is required");
+    if (thumbnailTooLarge(req)) return reject(req, res, 413, "The thumbnail is too large");
+    const duration = readDuration(data.duration);
+    if (duration === undefined) return reject(req, res, 400, "duration must be a number of seconds (up to 24 hours)");
 
-    /*this remove all undefined params, it works as a partial update */
-    Object.keys(req.body.sanitizeMovieInput).forEach((key) => {
-        if (req.body.sanitizeMovieInput[key] === undefined) {
-            delete req.body.sanitizeMovieInput[key];
-        }
-    })
-
+    req.body.sanitizeMovieInput = { ...result.values, duration };
     next()
+}
 
+/** Validates an edit from "My Videos": only title, category and description can change. */
+export const sanitizeMovieUpdate = (req:Request, res:Response, next:NextFunction) => {
+    const data = readFields(req);
+    if (!data) return res.status(400).json({ message: "data must be a valid JSON object" });
+
+    const result = pickText(data, MOVIE_FIELDS, "update");
+    if ("error" in result) return res.status(400).json({ message: result.error });
+
+    req.body.sanitizeMovieInput = result.values;
+    next()
 }

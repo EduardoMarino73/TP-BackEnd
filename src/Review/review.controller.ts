@@ -2,10 +2,11 @@ import { Request, Response } from "express";
 import { ReviewRepository } from "./review.repository.js";
 import { ReviewService } from "./review.service.js";
 import { AudiovisualType, Review } from "./review.entity.js";
+import { AUDIOVISUAL_TYPES } from "./review.validation.js";
+import { sendOwnershipError } from "../Shared/ownership.js";
 
 const service = new ReviewService(new ReviewRepository());
-// Restricts review links to the content tables available in this project.
-const types: AudiovisualType[] = ["movie", "episode"];
+const types = AUDIOVISUAL_TYPES;
 
 /** Returns all registered reviews. */
 export const findAll = async (_req: Request, res: Response) => res.json(await service.findAll());
@@ -30,15 +31,12 @@ export const findByAudiovisual = async (req: Request, res: Response) => {
     return reviews ? res.json({ data: reviews }) : res.status(400).json({ message: "Invalid audiovisual id" });
 };
 
-/** Validates required fields and creates a new rating. */
+/** Creates a new rating for the viewer who owns the token. */
 export const create = async (req: Request, res: Response) => {
-    const { viewerId, rating, audiovisualId, audiovisualType } = req.body ?? {};
-    if (!Number.isInteger(viewerId) || viewerId < 1 || typeof rating !== "boolean" ||
-        !Number.isInteger(audiovisualId) || audiovisualId < 1 || !types.includes(audiovisualType)) {
-        return res.status(400).json({ message: "viewerId, audiovisualId, rating (boolean), and audiovisualType (movie or episode) are required" });
-    }
+    const { rating, audiovisualId, audiovisualType } = req.body;
     try {
-        const review = await service.create(new Review(viewerId, rating, audiovisualId, audiovisualType));
+        const review = await service.create(new Review(req.user!.id_user, rating, audiovisualId, audiovisualType));
+        if (!review) return res.status(404).json({ message: "audiovisual not found" });
         return res.status(201).json({ message: "review created", data: review });
     } catch (error) {
         // A viewer may rate a given audiovisual once; a second POST returns 409.
@@ -47,32 +45,18 @@ export const create = async (req: Request, res: Response) => {
     }
 };
 
-/** Applies a partial update after validating each supplied field. */
+const FORBIDDEN_MESSAGE = "You can only change your own rating";
+
+/** Changes like <-> dislike. Only the viewer who wrote the review can do it. */
 export const update = async (req: Request, res: Response) => {
-    const input: Partial<Review> = {};
-    const body = req.body ?? {};
-    if (body.rating !== undefined) {
-        if (typeof body.rating !== "boolean") return res.status(400).json({ message: "rating must be boolean" });
-        input.rating = body.rating;
-    }
-    if (body.viewerId !== undefined) {
-        if (!Number.isInteger(body.viewerId) || body.viewerId < 1) return res.status(400).json({ message: "viewerId must be a positive integer" });
-        input.viewerId = body.viewerId;
-    }
-    if (body.audiovisualId !== undefined) {
-        if (!Number.isInteger(body.audiovisualId) || body.audiovisualId < 1) return res.status(400).json({ message: "audiovisualId must be a positive integer" });
-        input.audiovisualId = body.audiovisualId;
-    }
-    if (body.audiovisualType !== undefined) {
-        if (!types.includes(body.audiovisualType)) return res.status(400).json({ message: "audiovisualType must be movie or episode" });
-        input.audiovisualType = body.audiovisualType;
-    }
-    const review = await service.update(req.params.id as string, input);
-    return review ? res.json({ message: "review updated", data: review }) : res.sendStatus(404);
+    const result = await service.update(req.params.id as string, req.body.rating, req.user!.id_user);
+    if (sendOwnershipError(res, result, "review not found", FORBIDDEN_MESSAGE)) return;
+    return res.json({ message: "review updated", data: result.data });
 };
 
-/** Deletes a review or responds with 404 when the ID is not registered. */
+/** Withdraws a review. Only the viewer who wrote it can do it. */
 export const remove = async (req: Request, res: Response) => {
-    const removed = await service.remove(req.params.id as string);
-    return removed ? res.sendStatus(204) : res.sendStatus(404);
+    const result = await service.remove(req.params.id as string, req.user!.id_user);
+    if (sendOwnershipError(res, result, "review not found", FORBIDDEN_MESSAGE)) return;
+    return res.sendStatus(204);
 };

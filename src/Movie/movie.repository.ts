@@ -13,7 +13,16 @@ type MovieRow = RowDataPacket & {
     views: number;
     description: string;
     state: string;
+    thumbnail_path: string | null;
+    duration: number | null;
+    uploader_user_name?: string | null;
 };
+
+/* every read joins the uploader, so the detail can show who uploaded the movie */
+const MOVIE_SELECT = `SELECT m.id, m.id_author, m.path, m.title, m.category, m.views, m.description, m.state,
+        m.thumbnail_path, m.duration, u.user_name AS uploader_user_name
+    FROM movies AS m
+    LEFT JOIN users AS u ON u.id_user = m.id_author`;
 
 export type DTO_Movie = {
     id: number;
@@ -21,7 +30,7 @@ export type DTO_Movie = {
 }
 
 /*is a function that convet a MovieRow into instance of Movie */
-const toMovie = (row: MovieRow): Movie => new Movie(
+const toMovie = (row: MovieRow): Movie => Object.assign(new Movie(
     row.id_author,
     row.path,
     row.title,
@@ -31,7 +40,11 @@ const toMovie = (row: MovieRow): Movie => new Movie(
     row.state,
     undefined,
     row.id,
-);
+), {
+    uploader_user_name: row.uploader_user_name ?? undefined,
+    thumbnail_path: row.thumbnail_path ?? null,
+    duration: row.duration === null ? null : Number(row.duration),
+});
 
 export class MovieRepository implements Repository<Movie> {
 
@@ -41,7 +54,7 @@ export class MovieRepository implements Repository<Movie> {
         const result = await db.query...
         const rows = result[0]*/
         const [rows] = await db.query<MovieRow[]>(
-            "SELECT id, id_author, path, title, category, views, description, state FROM movies ORDER BY id",
+            `${MOVIE_SELECT} WHERE m.state = 'active' ORDER BY m.id`,
         );
         /*map apply a callback function to every item into the array rows*/
         return rows.map(toMovie);
@@ -50,7 +63,7 @@ export class MovieRepository implements Repository<Movie> {
     async findOne(id: number): Promise<Movie | undefined> {
         /*take the firts parameter*/
         const [rows] = await db.query<MovieRow[]>(
-            "SELECT id, id_author, path, title, category, views, description, state FROM movies WHERE id = ?",
+            `${MOVIE_SELECT} WHERE m.id = ? AND m.state = 'active'`,
             [id],
         );
         /*ternary operators
@@ -58,10 +71,21 @@ export class MovieRepository implements Repository<Movie> {
         return rows[0] ? toMovie(rows[0]) : undefined;
     }
 
+    /** Returns movies uploaded by one user. */
+    async findByAuthor(authorId: number): Promise<Movie[]> {
+        const [rows] = await db.execute<MovieRow[]>(
+            `${MOVIE_SELECT}
+             WHERE m.id_author = ? AND m.state <> 'deleted'
+             ORDER BY m.id`,
+            [authorId],
+        );
+        return rows.map(toMovie);
+    }
+
     async create(item: Movie): Promise<Movie> {
         const [result] = await db.execute<ResultSetHeader>(
-            "INSERT INTO movies (id_author, path, title, category, views, description, state) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [item.id_author, item.path, item.title, item.category, item.views, item.description, item.state],
+            "INSERT INTO movies (id_author, path, thumbnail_path, duration, title, category, views, description, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [item.id_author, item.path, item.thumbnail_path, item.duration, item.title, item.category, item.views, item.description, item.state],
         );
         /**it set the id of the movie that inserted into the table of the database*/
         item.id = result.insertId;
@@ -69,7 +93,8 @@ export class MovieRepository implements Repository<Movie> {
     }
 
     async update(id:number,input: Partial<Movie>): Promise<Movie | undefined> {
-        const allowedFields = ["id_author", "path", "title", "category", "views", "description", "state"] as const;
+        /* only the fields an uploader may edit: state, views, path and the author are never changed here */
+        const allowedFields = ["title", "category", "description"] as const;
         const fields = allowedFields.filter((field) => input[field] !== undefined);
         if (fields.length === 0) return this.findOne(id);
         
@@ -86,9 +111,10 @@ export class MovieRepository implements Repository<Movie> {
         return this.findOne(id);
     }
     
+    /** Logical delete: the movie is hidden everywhere, but its row and file are kept. */
     async delete(id: number): Promise<boolean> {
         const [result] = await db.execute<ResultSetHeader>(
-            "DELETE FROM movies WHERE id = ?",
+            "UPDATE movies SET state = 'deleted' WHERE id = ? AND state = 'active'",
             [id],
         );
         /**it return a number in form of a boolean value true or false  */

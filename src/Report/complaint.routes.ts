@@ -1,6 +1,12 @@
 import { Router } from "express";
-import { findAll } from "./complaint.controller.js";
+import { authenticate, requireRole } from "../User_Folder/user.auth.js";
+import { createReport, getReport, listReports } from "./complaint.controller.js";
+import { validateCaseFilters, validateNewReport } from "./report.validation.js";
 
-const complaintRouter = Router()
+export const complaintRouter = Router();
 
-complaintRouter.get('/',findAll)
+// Only signed-in viewers can submit content reports.
+complaintRouter.post("/", authenticate, requireRole("viewer"), validateNewReport, createReport);
+// Administrators list and inspect moderation cases.
+complaintRouter.get("/", authenticate, requireRole("administrator"), validateCaseFilters, listReports);
+complaintRouter.get("/:id", authenticate, requireRole("administrator"), getReport);

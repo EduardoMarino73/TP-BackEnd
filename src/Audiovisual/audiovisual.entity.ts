@@ -4,6 +4,12 @@
  */
 export abstract class Audiovisual {
     public reportsCount = 0;
+    /** Username of the uploader, filled when the content is read from the database. */
+    public uploader_user_name?: string;
+    /** URL path of the thumbnail image ("/thumbnails/..."), or null when there is none. */
+    public thumbnail_path: string | null = null;
+    /** Length of the video in seconds, read by the frontend from the file; null for old content. */
+    public duration: number | null = null;
 
     protected constructor(
         public title: string,

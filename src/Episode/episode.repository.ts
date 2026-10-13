@@ -16,12 +16,15 @@ type EpisodeRow = RowDataPacket & {
     views: number;
     state: string;
     id_author: number;
+    thumbnail_path: string | null;
+    duration: number | null;
+    uploader_user_name?: string | null;
 };
 
 /**
  * Transforms an EpisodeRow database record into an instance of Episode.
  */
-const toEpisode = (row: EpisodeRow): Episode => new Episode(
+const toEpisode = (row: EpisodeRow): Episode => Object.assign(new Episode(
     row.id_season,
     row.episode_number,
     row.title,
@@ -31,7 +34,11 @@ const toEpisode = (row: EpisodeRow): Episode => new Episode(
     Number(row.views),
     row.state,
     row.id
-);
+), {
+    uploader_user_name: row.uploader_user_name ?? undefined,
+    thumbnail_path: row.thumbnail_path ?? null,
+    duration: row.duration === null ? null : Number(row.duration),
+});
 
 /**
  * EpisodeRepository implements data access logic for Episode entities.
@@ -43,7 +50,14 @@ export class EpisodeRepository implements Repository<Episode> {
      */
     async findAll(): Promise<Episode[]> {
         const [rows] = await db.query<EpisodeRow[]>(
-            "SELECT id, id_season, episode_number, title, description, path, views, state, id_author FROM episodes ORDER BY id_season, episode_number"
+            `SELECT e.id, e.id_season, e.episode_number, e.title, e.description,
+                    e.path, e.thumbnail_path, e.duration, e.views, e.state, e.id_author, u.user_name AS uploader_user_name
+             FROM episodes AS e
+             LEFT JOIN users AS u ON u.id_user = e.id_author
+             JOIN seasons AS s ON s.id = e.id_season
+             JOIN series AS parent ON parent.id = s.id_serie
+             WHERE e.state = 'active' AND s.state = 'active' AND parent.state = 'active'
+             ORDER BY e.id_season, e.episode_number`,
         );
         return rows.map(toEpisode);
     }
@@ -53,7 +67,13 @@ export class EpisodeRepository implements Repository<Episode> {
      */
     async findOne(id: number): Promise<Episode | undefined> {
         const [rows] = await db.query<EpisodeRow[]>(
-            "SELECT id, id_season, episode_number, title, description, path, views, state, id_author FROM episodes WHERE id = ?",
+            `SELECT e.id, e.id_season, e.episode_number, e.title, e.description,
+                    e.path, e.thumbnail_path, e.duration, e.views, e.state, e.id_author, u.user_name AS uploader_user_name
+             FROM episodes AS e
+             LEFT JOIN users AS u ON u.id_user = e.id_author
+             JOIN seasons AS s ON s.id = e.id_season
+             JOIN series AS parent ON parent.id = s.id_serie
+             WHERE e.id = ? AND e.state = 'active' AND s.state = 'active' AND parent.state = 'active'`,
             [id]
         );
         return rows[0] ? toEpisode(rows[0]) : undefined;
@@ -65,8 +85,30 @@ export class EpisodeRepository implements Repository<Episode> {
      */
     async findBySeason(id_season: number): Promise<Episode[]> {
         const [rows] = await db.query<EpisodeRow[]>(
-            "SELECT id, id_season, episode_number, title, description, path, views, state, id_author FROM episodes WHERE id_season = ? ORDER BY episode_number",
+            `SELECT e.id, e.id_season, e.episode_number, e.title, e.description,
+                    e.path, e.thumbnail_path, e.duration, e.views, e.state, e.id_author, u.user_name AS uploader_user_name
+             FROM episodes AS e
+             LEFT JOIN users AS u ON u.id_user = e.id_author
+             JOIN seasons AS s ON s.id = e.id_season
+             JOIN series AS parent ON parent.id = s.id_serie
+             WHERE e.id_season = ?
+               AND e.state = 'active'
+               AND s.state = 'active'
+               AND parent.state = 'active'
+             ORDER BY e.episode_number`,
             [id_season]
+        );
+        return rows.map(toEpisode);
+    }
+
+    /** Returns episodes uploaded by one user. */
+    async findByAuthor(authorId: number): Promise<Episode[]> {
+        const [rows] = await db.execute<EpisodeRow[]>(
+            `SELECT id, id_season, episode_number, title, description, path, views, state, id_author
+             FROM episodes
+             WHERE id_author = ? AND state <> 'deleted'
+             ORDER BY id_season, episode_number`,
+            [authorId],
         );
         return rows.map(toEpisode);
     }
@@ -76,8 +118,8 @@ export class EpisodeRepository implements Repository<Episode> {
      */
     async create(item: Episode): Promise<Episode> {
         const [result] = await db.execute<ResultSetHeader>(
-            "INSERT INTO episodes (id_season, episode_number, title, description, path, views, state, id_author) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            [item.id_season, item.episode_number, item.title, item.description, item.path, item.views, item.state, item.id_author]
+            "INSERT INTO episodes (id_season, episode_number, title, description, path, thumbnail_path, duration, views, state, id_author) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [item.id_season, item.episode_number, item.title, item.description, item.path, item.thumbnail_path, item.duration, item.views, item.state, item.id_author]
         );
         item.id = result.insertId;
         return item;
@@ -87,7 +129,8 @@ export class EpisodeRepository implements Repository<Episode> {
      * Partially updates an episode row.
      */
     async update(id: number, input: Partial<Episode>): Promise<Episode | undefined> {
-        const allowedFields = ["id_season", "episode_number", "title", "description", "path", "views", "state", "id_author"] as const;
+        /* only the fields an uploader may edit: the season, file, views, state and author never change here */
+        const allowedFields = ["episode_number", "title", "description"] as const;
         const fields = allowedFields.filter((field) => input[field] !== undefined);
         if (fields.length === 0) return this.findOne(id);
 
@@ -102,11 +145,11 @@ export class EpisodeRepository implements Repository<Episode> {
     }
 
     /**
-     * Deletes an episode by ID.
+     * Logical delete: the episode is hidden everywhere, but its row and file are kept.
      */
     async delete(id: number): Promise<boolean> {
         const [result] = await db.execute<ResultSetHeader>(
-            "DELETE FROM episodes WHERE id = ?",
+            "UPDATE episodes SET state = 'deleted' WHERE id = ? AND state = 'active'",
             [id]
         );
         return result.affectedRows > 0;

@@ -17,4 +17,12 @@ export class Serie {
         // Primary key assigned by the database (auto-incremented)
         public id?: number
     ) {}
+
+    /** Username of the uploader, filled when the series is read from the database. */
+    public uploader_user_name?: string;
+    /**
+     * URL path of the cover. When the series has no cover of its own, the backend
+     * returns the thumbnail of its first episode; null when there is neither.
+     */
+    public thumbnail_path: string | null = null;
 }

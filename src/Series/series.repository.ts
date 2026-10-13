@@ -14,19 +14,43 @@ type SerieRow = RowDataPacket & {
     category: string;
     id_author: number;
     state: string | number;
+    thumbnail_path: string | null;
+    uploader_user_name?: string | null;
 };
+
+/**
+ * Every read joins the uploader, so the detail can show who uploaded the series.
+ * thumbnail_path is the series' own cover or, when it has none, the thumbnail of its
+ * first active episode (lowest season number, then lowest episode number).
+ */
+const SERIES_SELECT = `SELECT s.id, s.title, s.description, s.category, s.id_author, s.state,
+        COALESCE(s.thumbnail_path, (
+            SELECT e.thumbnail_path
+            FROM seasons AS se
+            JOIN episodes AS e ON e.id_season = se.id
+            WHERE se.id_serie = s.id AND se.state = 'active' AND e.state = 'active'
+              AND e.thumbnail_path IS NOT NULL
+            ORDER BY se.season_number, e.episode_number
+            LIMIT 1
+        )) AS thumbnail_path,
+        u.user_name AS uploader_user_name
+    FROM series AS s
+    LEFT JOIN users AS u ON u.id_user = s.id_author`;
 
 /**
  * Helper function that transforms a raw MySQL database row into an instance of the Serie domain entity.
  */
-const toSerie = (row: SerieRow): Serie => new Serie(
+const toSerie = (row: SerieRow): Serie => Object.assign(new Serie(
     row.id_author,
     row.title,
     row.category,
     row.description,
     String(row.state),
     row.id
-);
+), {
+    uploader_user_name: row.uploader_user_name ?? undefined,
+    thumbnail_path: row.thumbnail_path ?? null,
+});
 
 /**
  * SeriesRepository implements the generic Repository contract for Serie entities (Data Access Object / DAO).
@@ -40,7 +64,7 @@ export class SeriesRepository implements Repository<Serie> {
     async findAll(): Promise<Serie[]> {
         // Execute the query; destructure rows from the first element of the returned tuple
         const [rows] = await db.query<SerieRow[]>(
-            "SELECT id, title, description, category, id_author, state FROM series ORDER BY id"
+            `${SERIES_SELECT} WHERE s.state = 'active' ORDER BY s.id`
         );
         // Map each database row into a Serie domain instance
         return rows.map(toSerie);
@@ -53,7 +77,7 @@ export class SeriesRepository implements Repository<Serie> {
     async findOne(id: number): Promise<Serie | undefined> {
         // Use parameterized query '?' to prevent SQL injection vulnerabilities
         const [rows] = await db.query<SerieRow[]>(
-            "SELECT id, title, description, category, id_author, state FROM series WHERE id = ?",
+            `${SERIES_SELECT} WHERE s.id = ? AND s.state = 'active'`,
             [id]
         );
         // Return domain object if row exists, otherwise undefined
@@ -66,8 +90,8 @@ export class SeriesRepository implements Repository<Serie> {
      */
     async create(item: Serie): Promise<Serie> {
         const [result] = await db.execute<ResultSetHeader>(
-            "INSERT INTO series (title, description, category, id_author, state) VALUES (?, ?, ?, ?, ?)",
-            [item.title, item.description, item.category, item.id_author, item.state]
+            "INSERT INTO series (title, description, category, thumbnail_path, id_author, state) VALUES (?, ?, ?, ?, ?, ?)",
+            [item.title, item.description, item.category, item.thumbnail_path, item.id_author, item.state]
         );
         // Assign the generated auto-increment primary key ID to the entity
         item.id = result.insertId;
@@ -79,7 +103,8 @@ export class SeriesRepository implements Repository<Serie> {
      */
     async update(id: number, input: Partial<Serie>): Promise<Serie | undefined> {
         // Whitelist allowed fields to prevent arbitrary or malicious column updates
-        const allowedFields = ["title", "description", "category", "id_author", "state"] as const;
+        // The author and the state are never changed through an edit
+        const allowedFields = ["title", "description", "category"] as const;
         const fields = allowedFields.filter((field) => input[field] !== undefined);
 
         // If no valid fields were supplied, simply return the current state of the series
@@ -99,11 +124,12 @@ export class SeriesRepository implements Repository<Serie> {
     }
 
     /**
-     * Deletes a series by ID. Returns true if at least one row was affected, false otherwise.
+     * Logical delete: the series (and with it its seasons and episodes) is hidden, but the rows are kept.
+     * Returns true if at least one row was affected, false otherwise.
      */
     async delete(id: number): Promise<boolean> {
         const [result] = await db.execute<ResultSetHeader>(
-            "DELETE FROM series WHERE id = ?",
+            "UPDATE series SET state = 'deleted' WHERE id = ? AND state = 'active'",
             [id]
         );
         return result.affectedRows > 0;

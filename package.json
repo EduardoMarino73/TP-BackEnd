@@ -2,27 +2,29 @@
   "name": "TP Desarrollo BackEnd",
   "type": "module",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "CineWeb backend: REST API for movies, series, reports and appeals",
+  "main": "dist/index.js",
   "scripts": {
     "build": "tsc -p ./tsconfig.json",
-    "start:dev": "tsc-watch --noClear -p ./tsconfig.json --onSuccess \"node ./dist/index.js\""
+    "start": "node ./dist/index.js",
+    "dev": "tsc-watch --noClear -p ./tsconfig.json --onSuccess \"node ./dist/index.js\"",
+    "start:dev": "pnpm dev"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.33.2",
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/multer": "^2.1.0",
-    "cors": "^2.8.6",
-    "express": "^5.2.1",
     "tsc-watch": "6.0.4",
     "typescript": "5.1.3"
   },
   "dependencies": {
-    "@types/cors": "^2.8.19",
+    "cors": "^2.8.6",
     "dotenv": "^17.4.2",
+    "express": "^5.2.1",
     "multer": "^2.1.1",
     "mysql2": "^3.23.2"
   }

@@ -1,33 +1,37 @@
 import { NextFunction, Request, Response } from "express";
+import { pickText, readFields, readPositiveInt } from "../Shared/validation.js";
 
 /**
- * Middleware that validates and sanitizes input data for Season operations.
- * Ensures numbers are properly cast and undefined values are removed.
+ * Builds the middleware that validates season data.
+ * "create" needs id_serie and season_number; "update" accepts season_number and description
+ * (a season cannot be moved to another series).
  */
-export const sanitizeSeasonInput = (req: Request, _res: Response, next: NextFunction) => {
-    let data: any = req.body;
+const sanitizeSeason = (mode: "create" | "update") => (req: Request, res: Response, next: NextFunction) => {
+    const data = readFields(req);
+    if (!data) return res.status(400).json({ message: "data must be a valid JSON object" });
 
-    // Handle FormData JSON payloads if sent under the 'data' field
-    if (typeof req.body.data === "string") {
-        try {
-            data = JSON.parse(req.body.data);
-        } catch {
-            data = req.body;
-        }
+    const values: Record<string, string | number> = {};
+    if (mode === "create") {
+        const id_serie = readPositiveInt(data.id_serie);
+        if (!id_serie) return res.status(400).json({ message: "id_serie must be a positive integer" });
+        values.id_serie = id_serie;
+    }
+    if (mode === "create" || data.season_number !== undefined) {
+        const season_number = readPositiveInt(data.season_number);
+        if (!season_number) return res.status(400).json({ message: "season_number must be a positive integer" });
+        values.season_number = season_number;
     }
 
-    req.body.sanitizeSeasonInput = {
-        id_serie: data.id_serie !== undefined ? Number(data.id_serie) : undefined,
-        season_number: data.season_number !== undefined ? Number(data.season_number) : undefined,
-        description: data.description,
-    };
+    const text = pickText(data, { description: { max: 5000, optional: true, allowEmpty: true } }, "create");
+    if ("error" in text) return res.status(400).json({ message: text.error });
+    Object.assign(values, text.values);
 
-    // Remove undefined fields for partial updates
-    Object.keys(req.body.sanitizeSeasonInput).forEach((key) => {
-        if (req.body.sanitizeSeasonInput[key] === undefined) {
-            delete req.body.sanitizeSeasonInput[key];
-        }
-    });
-
+    if (Object.keys(values).length === 0) {
+        return res.status(400).json({ message: "Send at least one field to change" });
+    }
+    req.body.sanitizeSeasonInput = values;
     next();
 };
+
+export const sanitizeSeasonInput = sanitizeSeason("create");
+export const sanitizeSeasonUpdate = sanitizeSeason("update");

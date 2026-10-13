@@ -1,36 +1,32 @@
 import { NextFunction, Request, Response } from "express";
+import { pickText, readFields, reject, TextRule } from "../Shared/validation.js";
 
 /**
- * Middleware that extracts, sanitizes, and prepares series payload data from the HTTP request.
+ * The only fields a viewer can send for a series. The author comes from the token
+ * and the state is set by the server, so neither is read from the request.
+ */
+const SERIES_FIELDS: Record<string, TextRule> = {
+    title: { max: 255 },
+    category: { max: 100 },
+    description: { max: 5000, optional: true, allowEmpty: true },
+};
+
+/**
+ * Builds the middleware that validates series data, for a new series ("create")
+ * or an edit ("update", at least one field).
  * Supports both standard JSON request bodies and FormData-based payloads where fields are sent within 'data'.
  */
-export const sanitizeSeriesInput = (req: Request, _res: Response, next: NextFunction) => {
-    let data: any = req.body;
+const sanitizeSeries = (mode: "create" | "update") => (req: Request, res: Response, next: NextFunction) => {
+    const data = readFields(req);
+    // reject() also deletes the cover image, if one was uploaded
+    if (!data) return reject(req, res, 400, "data must be a valid JSON object");
 
-    // If payload was stringified inside FormData (req.body.data), attempt to parse it
-    if (typeof req.body.data === "string") {
-        try {
-            data = JSON.parse(req.body.data);
-        } catch {
-            data = req.body;
-        }
-    }
+    const result = pickText(data, SERIES_FIELDS, mode);
+    if ("error" in result) return reject(req, res, 400, result.error);
 
-    // Structure sanitized fields with appropriate data types
-    req.body.sanitizeSeriesInput = {
-        id_author: data.id_author !== undefined ? Number(data.id_author) : undefined,
-        title: data.title,
-        category: data.category,
-        description: data.description,
-        state: data.state ?? "active",
-    };
-
-    // Remove any undefined keys so partial updates do not overwrite database columns with undefined
-    Object.keys(req.body.sanitizeSeriesInput).forEach((key) => {
-        if (req.body.sanitizeSeriesInput[key] === undefined) {
-            delete req.body.sanitizeSeriesInput[key];
-        }
-    });
-
+    req.body.sanitizeSeriesInput = result.values;
     next();
 };
+
+export const sanitizeSeriesInput = sanitizeSeries("create");
+export const sanitizeSeriesUpdate = sanitizeSeries("update");

@@ -3,6 +3,8 @@ import { MovieRepository } from "./movie.repository.js";
 import { MovieService } from "./movie.service.js";
 import fs from "fs";
 import path from "path";
+import { moviePath, thumbnailUrl, uploadedFile } from "../Shared/database/content.Storage.js";
+import { sendOwnershipError } from "../Shared/ownership.js";
 
 /*The controller takes care of handling the business logic that lets us put together a package
 with all the information we need to return to the FrontEnd */
@@ -35,46 +37,32 @@ export const findOneByPath = async (req:Request,res:Response) => {
 }
 
 export const create = async (req:Request,res:Response) =>{
-    /** log check if anything is wrong */
-    const movieInput = req.body.sanitizeMovieInput;
-
-    if (req.file) {
+    // the validation already checked the fields and that a video file arrived
+    const movie = await service.create({
+        ...req.body.sanitizeMovieInput,
         // use the exact filename multer saved on disk, so the DB path always matches the real file
-        movieInput.path = `/movies/${req.file.filename}`;
-    }
-
-    const requiredFields = ["id_author", "title", "views", "description", "state"] as const;
-    const missingFields = requiredFields.filter((field) => movieInput[field] === undefined);
-
-    if (missingFields.length > 0) {
-        return res.status(400).json({
-            message: "Missing required movie fields",
-            fields: missingFields,
-        });
-    }
-
-    const movie = await service.create(movieInput);
+        path: `/movies/${uploadedFile(req, "file")!.filename}`,
+        thumbnail_path: thumbnailUrl(uploadedFile(req, "thumbnail")),
+        // the uploader is whoever owns the token, never a field of the request
+        id_author: req.user!.id_user,
+    });
     return res.status(201).json({message: "movie created", data:movie});
 }
 
 export const update = async (req:Request,res:Response) =>{
     const id_Movie = req.params.id as string;
-    /* "req.body.sanitizeMovieInput" is a callback that clears all the undefined params of my movie object */
-    const movie = await service.update(id_Movie,req.body.sanitizeMovieInput);
+    /* "req.body.sanitizeMovieInput" only has the fields a viewer may change (title, category, description) */
+    const result = await service.update(id_Movie, req.body.sanitizeMovieInput, req.user!.id_user);
 
-    if(!movie){
-        return res.sendStatus(404);
-    }
-    return res.status(200).send({message: "movie updated",data:movie});
+    if (sendOwnershipError(res, result, "movie not found")) return;
+    return res.status(200).send({message: "movie updated",data:result.data});
 }
 
 export const remove = async (req:Request,res:Response) => {
     const id_Movie = req.params.id as string;
-    const result = await service.remove(id_Movie);
+    const result = await service.remove(id_Movie, req.user!.id_user);
 
-    if(!result){
-        return res.sendStatus(500).send({message: "internal error"});
-    }
+    if (sendOwnershipError(res, result, "movie not found")) return;
     return res.status(200).send({message: `movie with id: ${id_Movie} was removed`});
 }
 
@@ -101,7 +89,7 @@ export async function streamMovie(req: Request, res: Response) {
     // movie.path is stored as "/movies/167123-xyz.mp4"
     // convert it to the file's actual location on disk
     const fileName = path.basename(movie.path);
-    const filePath = path.resolve("src/Shared/database/content/movies", fileName);
+    const filePath = path.resolve(moviePath, fileName);
 
     //try to read the file metadata synchronously. If the file was deleted or doesn't exist at that path, catch the exception and return a 404
     let stat: fs.Stats;
