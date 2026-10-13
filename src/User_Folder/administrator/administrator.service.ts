@@ -67,14 +67,7 @@ export class AdministratorService {
         email: string;
         password_hash: string;
     }): Promise<Administrator> {
-        const user = await this.users.create({ ...input, role: "administrator" });
-        return new Administrator(
-            user.id_user,
-            user.user_name,
-            user.first_name,
-            user.last_name,
-            user.email,
-            user.active,
-        );
+        // with the administrator role, UserRepository creates an Administrator
+        return await this.users.create({ ...input, role: "administrator" }) as Administrator;
     }
 }

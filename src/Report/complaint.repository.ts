@@ -1,111 +1,90 @@
-import { ResultSetHeader, RowDataPacket } from "mysql2";
-import { db } from "../Shared/database/connections.js";
+import { FilterQuery, LockMode, sql } from "@mikro-orm/core";
+import { EntityManager } from "@mikro-orm/mysql";
+import { orm } from "../Shared/database/connections.js";
+import { Appeal } from "../Appeal/appeal.entity.js";
+import { Movie } from "../Movie/movie.entity.js";
+import { Serie } from "../Series/series.entity.js";
+import { ReportType } from "../Report_Type/report_type.entity.js";
 import {
     CaseFilters, Complaint, ContentReport, ModerationCaseSummary, ReasonCount, ReportTargetType,
 } from "./complaint.entity.js";
 
-type ComplaintRow = RowDataPacket & {
-    id: number;
-    target_type: ReportTargetType;
-    target_id: number;
-    report_count: number;
-    status: Complaint["status"];
-};
+/** A reported movie or series, as far as moderation needs it. */
+type ReportedContent = Pick<Movie | Serie, "id" | "title" | "state" | "id_author" | "uploader_user_name">;
 
-type ContentReportRow = RowDataPacket & {
-    id: number;
-    target_type: ReportTargetType;
-    target_id: number;
-    reporter_id: number;
-    report_type_id: number;
-    report_type: string;
-    details: string | null;
-};
-
-/** Columns of a report, with the name of its type. Needs "FROM content_reports AS r JOIN report_types AS t". */
-const REPORT_COLUMNS = `r.id, r.target_type, r.target_id, r.reporter_id,
-    r.report_type_id, t.name AS report_type, r.details`;
-
-function toComplaint(row: ComplaintRow): Complaint {
-    return new Complaint(
-        row.id,
-        row.target_type,
-        row.target_id,
-        Number(row.report_count),
-        row.status,
-    );
+/** Loads the reported movie or series, in any state. lockMode locks its row until the transaction ends. */
+export async function findContent(
+    em: EntityManager,
+    type: ReportTargetType,
+    id: number,
+    lockMode?: LockMode,
+): Promise<Movie | Serie | null> {
+    return type === "movie"
+        ? em.findOne(Movie, id, { lockMode })
+        : em.findOne(Serie, id, { lockMode });
 }
 
-/** A row of findCases: the case joined with its content, owner and appeal. */
-type CaseRow = ComplaintRow & {
-    created_at: Date;
-    title: string | null;
-    content_state: string | null;
-    owner_id: number | null;
-    owner_username: string | null;
-    appeal_id: number | null;
-    appeal_description: string | null;
-    appeal_reviewed: number | null;
-    appeal_decision: "approved" | "rejected" | null;
-};
+/**
+ * Conditions that match the reports or cases about content uploaded by a user
+ * (an empty list when the user has uploaded nothing).
+ */
+export async function ownedContentTargets(
+    em: EntityManager,
+    ownerId: number,
+): Promise<Array<{ targetType: ReportTargetType; targetId: { $in: number[] } }>> {
+    const movies = await em.find(Movie, { id_author: ownerId });
+    const series = await em.find(Serie, { id_author: ownerId });
+    const targets: Array<{ targetType: ReportTargetType; targetId: { $in: number[] } }> = [];
+    if (movies.length > 0) targets.push({ targetType: "movie", targetId: { $in: movies.map((movie) => movie.id!) } });
+    if (series.length > 0) targets.push({ targetType: "series", targetId: { $in: series.map((serie) => serie.id!) } });
+    return targets;
+}
 
-function toCaseSummary(row: CaseRow, reasons: ReasonCount[]): ModerationCaseSummary {
+/** The movie or series a case is about, as the summary shows it. */
+function toCaseSummary(
+    complaint: Complaint,
+    content: ReportedContent | undefined,
+    appeal: Appeal | undefined,
+    reasons: ReasonCount[],
+): ModerationCaseSummary {
     return {
-        id: row.id,
-        targetType: row.target_type,
-        targetId: row.target_id,
-        reportCount: Number(row.report_count),
-        status: row.status,
-        createdAt: row.created_at,
+        id: complaint.id,
+        targetType: complaint.targetType,
+        targetId: complaint.targetId,
+        reportCount: complaint.reportCount,
+        status: complaint.status,
+        createdAt: complaint.createdAt!,
         content: {
-            title: row.title,
-            state: row.content_state,
-            ownerId: row.owner_id,
-            ownerUsername: row.owner_username,
+            title: content?.title ?? null,
+            state: content?.state ?? null,
+            ownerId: content?.id_author ?? null,
+            ownerUsername: content?.uploader_user_name ?? null,
         },
         reasons,
-        appeal: row.appeal_id === null ? null : {
-            id: row.appeal_id,
-            description: row.appeal_description ?? "",
-            reviewed: Boolean(row.appeal_reviewed),
-            decision: row.appeal_decision,
-        },
+        appeal: appeal ? {
+            id: appeal.id,
+            description: appeal.description,
+            reviewed: appeal.reviewed,
+            decision: appeal.decision,
+        } : null,
     };
-}
-
-function toContentReport(row: ContentReportRow): ContentReport {
-    return new ContentReport(
-        row.id,
-        row.target_type,
-        row.target_id,
-        row.reporter_id,
-        row.report_type_id,
-        row.report_type,
-        row.details,
-    );
 }
 
 /** Stores individual reports and threshold-based moderation cases. */
 export class ComplaintRepository {
+    /** The EntityManager of the current request (see RequestContext in index.ts). */
+    private get em() {
+        return orm.em;
+    }
+
     /** Returns all moderation cases. */
     async findAll(): Promise<Complaint[]> {
-        const [rows] = await db.query<ComplaintRow[]>(
-            `SELECT id, target_type, target_id, report_count, status
-             FROM moderation_cases
-             ORDER BY id`,
-        );
-        return rows.map(toComplaint);
+        return this.em.find(Complaint, {}, { orderBy: { id: "asc" } });
     }
 
     /** Finds a moderation case by its ID. */
     async findOne(id: number): Promise<Complaint | undefined> {
-        const [rows] = await db.execute<ComplaintRow[]>(
-            `SELECT id, target_type, target_id, report_count, status
-             FROM moderation_cases
-             WHERE id = ?`,
-            [id],
-        );
-        return rows[0] ? toComplaint(rows[0]) : undefined;
+        return (await this.em.findOne(Complaint, id)) ?? undefined;
     }
 
     /**
@@ -125,156 +104,65 @@ export class ComplaintRepository {
         complaintCreated?: Complaint;
         error?: "not_found" | "own_content" | "inactive" | "duplicate";
     }> {
-        const connection = await db.getConnection();
-        try {
-            await connection.beginTransaction();
-            const table = input.targetType === "movie" ? "movies" : "series";
-            const [contentRows] = await connection.execute<(RowDataPacket & {
-                id_author: number;
-                state: string;
-            })[]>(
-                `SELECT id_author, state FROM ${table} WHERE id = ? FOR UPDATE`,
-                [input.targetId],
-            );
-            const content = contentRows[0];
+        // everything inside runs in one transaction: it commits at the end, or rolls back on an error
+        return this.em.transactional(async (em) => {
+            const target = { targetType: input.targetType, targetId: input.targetId };
+            const content = await findContent(em, input.targetType, input.targetId, LockMode.PESSIMISTIC_WRITE);
 
-            if (!content) {
-                await connection.rollback();
-                return { error: "not_found" };
-            }
-            if (Number(content.id_author) === input.reporterId) {
-                await connection.rollback();
-                return { error: "own_content" };
-            }
-            if (content.state !== "active") {
-                await connection.rollback();
-                return { error: "inactive" };
+            if (!content) return { error: "not_found" as const };
+            if (content.id_author === input.reporterId) return { error: "own_content" as const };
+            if (content.state !== "active") return { error: "inactive" as const };
+
+            if (await em.count(ContentReport, { ...target, reporterId: input.reporterId }) > 0) {
+                return { error: "duplicate" as const };
             }
 
-            const [existingRows] = await connection.execute<(RowDataPacket & { id: number })[]>(
-                `SELECT id
-                 FROM content_reports
-                 WHERE reporter_id = ? AND target_type = ? AND target_id = ?
-                 LIMIT 1`,
-                [input.reporterId, input.targetType, input.targetId],
+            const report = new ContentReport(
+                input.targetType,
+                input.targetId,
+                input.reporterId,
+                input.reportTypeId,
+                input.reportType,
+                input.details,
             );
-            if (existingRows.length > 0) {
-                await connection.rollback();
-                return { error: "duplicate" };
-            }
+            await em.persist(report).flush();
 
-            const [insertResult] = await connection.execute<ResultSetHeader>(
-                `INSERT INTO content_reports
-                    (target_type, target_id, reporter_id, report_type_id, details)
-                 VALUES (?, ?, ?, ?, ?)`,
-                [input.targetType, input.targetId, input.reporterId, input.reportTypeId, input.details],
-            );
-            const [countRows] = await connection.execute<(RowDataPacket & { total: number })[]>(
-                `SELECT COUNT(*) AS total
-                 FROM content_reports
-                 WHERE target_type = ? AND target_id = ?`,
-                [input.targetType, input.targetId],
-            );
-            const reportCount = Number(countRows[0].total);
+            const reportCount = await em.count(ContentReport, target);
             let complaintCreated: Complaint | undefined;
 
-            if (reportCount >= threshold) {
-                const [caseRows] = await connection.execute<(RowDataPacket & { id: number })[]>(
-                    `SELECT id
-                     FROM moderation_cases
-                     WHERE target_type = ? AND target_id = ?
-                     LIMIT 1`,
-                    [input.targetType, input.targetId],
-                );
-
-                if (caseRows.length === 0) {
-                    const [caseResult] = await connection.execute<ResultSetHeader>(
-                        `INSERT INTO moderation_cases
-                            (target_type, target_id, report_count)
-                         VALUES (?, ?, ?)`,
-                        [input.targetType, input.targetId, reportCount],
-                    );
-                    complaintCreated = new Complaint(
-                        caseResult.insertId,
-                        input.targetType,
-                        input.targetId,
-                        reportCount,
-                        "pending",
-                    );
-                }
+            if (reportCount >= threshold && await em.count(Complaint, target) === 0) {
+                complaintCreated = new Complaint(input.targetType, input.targetId, reportCount);
+                await em.persist(complaintCreated).flush();
             }
 
-            await connection.commit();
-            return {
-                report: new ContentReport(
-                    insertResult.insertId,
-                    input.targetType,
-                    input.targetId,
-                    input.reporterId,
-                    input.reportTypeId,
-                    input.reportType,
-                    input.details,
-                ),
-                reportCount,
-                complaintCreated,
-            };
-        } catch (error) {
-            await connection.rollback();
-            throw error;
-        } finally {
-            connection.release();
-        }
+            return { report, reportCount, complaintCreated };
+        });
     }
 
-    /** Returns a case and the current total reports for its audiovisual. */
+    /** Returns a case, the current total reports for its audiovisual and each of those reports. */
     async findWithReportCount(id: number) {
         const complaint = await this.findOne(id);
         if (!complaint) return undefined;
 
-        const [[countRows], [reportRows]] = await Promise.all([
-            db.execute<(RowDataPacket & { total: number })[]>(
-            `SELECT COUNT(*) AS total
-             FROM content_reports
-             WHERE target_type = ? AND target_id = ?`,
-            [complaint.targetType, complaint.targetId],
-            ),
-            db.execute<ContentReportRow[]>(
-                `SELECT ${REPORT_COLUMNS}
-                 FROM content_reports AS r
-                 JOIN report_types AS t ON t.id = r.report_type_id
-                 WHERE r.target_type = ? AND r.target_id = ?
-                 ORDER BY r.id`,
-                [complaint.targetType, complaint.targetId],
-            ),
-        ]);
+        const target = { targetType: complaint.targetType, targetId: complaint.targetId };
+        const reports = await this.em.find(ContentReport, target, { orderBy: { id: "asc" } });
         return {
             complaint,
-            reportCount: Number(countRows[0].total),
-            reports: reportRows.map(toContentReport),
+            reportCount: reports.length,
+            reports,
         };
     }
 
-    /** Counts active reports against audiovisual content owned by a viewer. */
+    /** Counts reports against audiovisual content owned by a viewer. */
     async countReceivedByViewer(viewerId: number): Promise<number> {
-        const [rows] = await db.execute<(RowDataPacket & { total: number })[]>(
-            `SELECT COUNT(*) AS total
-             FROM content_reports AS r
-             LEFT JOIN movies AS m
-                ON r.target_type = 'movie' AND r.target_id = m.id
-             LEFT JOIN series AS s
-                ON r.target_type = 'series' AND r.target_id = s.id
-             WHERE m.id_author = ? OR s.id_author = ?`,
-            [viewerId, viewerId],
-        );
-        return Number(rows[0].total);
+        const targets = await ownedContentTargets(this.em, viewerId);
+        if (targets.length === 0) return 0;
+        return this.em.count(ContentReport, { $or: targets });
     }
 
     /** Changes a moderation case's status. */
     async setStatus(id: number, status: Complaint["status"]): Promise<void> {
-        await db.execute(
-            "UPDATE moderation_cases SET status = ? WHERE id = ?",
-            [status, id],
-        );
+        await this.em.nativeUpdate(Complaint, { id }, { status });
     }
 
     /**
@@ -282,73 +170,82 @@ export class ComplaintRepository {
      * Every filter is optional; the newest cases come first.
      */
     async findCases(filters: CaseFilters = {}): Promise<ModerationCaseSummary[]> {
-        const conditions: string[] = [];
-        const params: Array<string | number> = [];
-        if (filters.id !== undefined) {
-            conditions.push("c.id = ?");
-            params.push(filters.id);
-        }
-        if (filters.status !== undefined) {
-            conditions.push("c.status = ?");
-            params.push(filters.status);
-        }
+        const conditions: FilterQuery<Complaint>[] = [];
+        if (filters.id !== undefined) conditions.push({ id: filters.id });
+        if (filters.status !== undefined) conditions.push({ status: filters.status });
         if (filters.ownerId !== undefined) {
-            conditions.push("COALESCE(m.id_author, s.id_author) = ?");
-            params.push(filters.ownerId);
+            const targets = await ownedContentTargets(this.em, filters.ownerId);
+            if (targets.length === 0) return [];
+            conditions.push({ $or: targets });
         }
         if (filters.reportTypeId !== undefined) {
-            conditions.push(`EXISTS (SELECT 1 FROM content_reports AS fr
-                 WHERE fr.target_type = c.target_type AND fr.target_id = c.target_id
-                   AND fr.report_type_id = ?)`);
-            params.push(filters.reportTypeId);
+            const reports = await this.em.find(ContentReport, { reportTypeId: filters.reportTypeId });
+            if (reports.length === 0) return [];
+            conditions.push({
+                $or: reports.map((report) => ({ targetType: report.targetType, targetId: report.targetId })),
+            });
         }
 
-        const [rows] = await db.query<CaseRow[]>(
-            `SELECT c.id, c.target_type, c.target_id, c.report_count, c.status, c.created_at,
-                    COALESCE(m.title, s.title) AS title,
-                    COALESCE(m.state, s.state) AS content_state,
-                    u.id_user AS owner_id, u.user_name AS owner_username,
-                    a.id AS appeal_id, a.description AS appeal_description,
-                    a.reviewed AS appeal_reviewed, a.decision AS appeal_decision
-             FROM moderation_cases AS c
-             LEFT JOIN movies AS m ON c.target_type = 'movie' AND m.id = c.target_id
-             LEFT JOIN series AS s ON c.target_type = 'series' AND s.id = c.target_id
-             LEFT JOIN users AS u ON u.id_user = COALESCE(m.id_author, s.id_author)
-             LEFT JOIN content_appeals AS a ON a.moderation_case_id = c.id
-             ${conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""}
-             ORDER BY c.id DESC`,
-            params,
-        );
-        if (rows.length === 0) return [];
+        const cases = await this.em.find(Complaint, { $and: conditions }, { orderBy: { id: "desc" } });
+        if (cases.length === 0) return [];
 
-        // reasons of every listed case, grouped by report type
-        const [reasonRows] = await db.query<(RowDataPacket & {
-            case_id: number; report_type_id: number; report_type: string; total: number;
-        })[]>(
-            `SELECT c.id AS case_id, t.id AS report_type_id, t.name AS report_type, COUNT(*) AS total
-             FROM moderation_cases AS c
-             JOIN content_reports AS r ON r.target_type = c.target_type AND r.target_id = c.target_id
-             JOIN report_types AS t ON t.id = r.report_type_id
-             WHERE c.id IN (?)
-             GROUP BY c.id, t.id, t.name
-             ORDER BY total DESC, t.name`,
-            [rows.map((row) => row.id)],
-        );
-        const reasons = new Map<number, ReasonCount[]>();
-        reasonRows.forEach((row) => {
-            const list = reasons.get(row.case_id) ?? [];
-            list.push({ reportTypeId: row.report_type_id, reportType: row.report_type, count: Number(row.total) });
-            reasons.set(row.case_id, list);
+        // the content, appeal and reasons of every listed case
+        const idsOf = (type: ReportTargetType) => cases
+            .filter((complaint) => complaint.targetType === type)
+            .map((complaint) => complaint.targetId);
+        const movies = await this.em.find(Movie, { id: { $in: idsOf("movie") } });
+        const series = await this.em.find(Serie, { id: { $in: idsOf("series") } });
+        const appeals = await this.em.find(Appeal, { reportId: { $in: cases.map((complaint) => complaint.id) } });
+        const reasons = await this.reasonsByTarget(cases);
+
+        const contentByTarget = new Map<string, ReportedContent>([
+            ...movies.map((movie) => [`movie:${movie.id}`, movie] as const),
+            ...series.map((serie) => [`series:${serie.id}`, serie] as const),
+        ]);
+        const appealByCase = new Map(appeals.map((appeal) => [appeal.reportId, appeal]));
+
+        return cases.map((complaint) => {
+            const key = `${complaint.targetType}:${complaint.targetId}`;
+            return toCaseSummary(
+                complaint,
+                contentByTarget.get(key),
+                appealByCase.get(complaint.id),
+                reasons.get(key) ?? [],
+            );
         });
+    }
 
-        return rows.map((row) => toCaseSummary(row, reasons.get(row.id) ?? []));
+    /**
+     * Counts the reports of each case's content by report type, most frequent first.
+     * The QueryBuilder groups and counts in the database.
+     */
+    private async reasonsByTarget(cases: Complaint[]): Promise<Map<string, ReasonCount[]>> {
+        const rows = await this.em.createQueryBuilder(ContentReport, "r")
+            .select(["r.targetType", "r.targetId", "r.reportTypeId", sql`count(*)`.as("total")])
+            .where({ $or: cases.map((complaint) => ({ targetType: complaint.targetType, targetId: complaint.targetId })) })
+            .groupBy(["r.targetType", "r.targetId", "r.reportTypeId"])
+            .execute<Array<{ targetType: ReportTargetType; targetId: number; reportTypeId: number; total: number }>>("all");
+
+        const types = await this.em.find(ReportType, { id: { $in: rows.map((row) => row.reportTypeId) } });
+        const nameById = new Map(types.map((type) => [type.id, type.name]));
+
+        const reasons = new Map<string, ReasonCount[]>();
+        rows.forEach((row) => {
+            const key = `${row.targetType}:${row.targetId}`;
+            const list = reasons.get(key) ?? [];
+            list.push({
+                reportTypeId: row.reportTypeId,
+                reportType: nameById.get(row.reportTypeId) ?? "",
+                count: Number(row.total),
+            });
+            reasons.set(key, list);
+        });
+        reasons.forEach((list) => list.sort((a, b) => b.count - a.count || a.reportType.localeCompare(b.reportType)));
+        return reasons;
     }
 
     /** Marks a case as awaiting administrator review. */
     async markAppealed(id: number): Promise<void> {
-        await db.execute(
-            "UPDATE moderation_cases SET status = 'appealed' WHERE id = ?",
-            [id],
-        );
+        await this.em.nativeUpdate(Complaint, { id }, { status: "appealed" });
     }
 }

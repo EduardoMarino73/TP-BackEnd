@@ -3,7 +3,8 @@
 Backend of **CineWeb**, a platform where viewers upload, watch, rate and report movies and series,
 and administrators moderate reports and appeals. DSW course project.
 
-Express 5 + TypeScript + MySQL (`mysql2`, Repository pattern). The frontend is
+Express 5 + TypeScript + MySQL, with the MikroORM 6 ORM (entities mapped to the tables of
+`init.sql`, accessed through repositories). Set `MYSQL_DEBUG=true` to log the SQL it runs. The frontend is
 [cineweb-frontend](https://github.com/liamlucca/cineweb-frontend).
 
 **Documentation** (proposal, PRs, progress minutes, tracking): [docs/](docs/README.md).

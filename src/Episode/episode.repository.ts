@@ -1,157 +1,95 @@
-import { Repository } from "../Shared/repository.js";
+import { FilterQuery } from "@mikro-orm/core";
+import { pickDefined, Repository } from "../Shared/repository.js";
 import { Episode } from "./episode.entity.js";
-import { db } from "../Shared/database/connections.js";
-import { ResultSetHeader, RowDataPacket } from "mysql2";
+import { orm } from "../Shared/database/connections.js";
+
+/** Only the fields an uploader may edit: the season, file, views, state and author never change here. */
+const EDITABLE_FIELDS = ["episode_number", "title", "description"] as const;
 
 /**
- * Type representing an episode row retrieved from the 'episodes' table in MySQL.
+ * Condition of a visible episode: it, its season and its series are active.
+ * The ORM turns the nested conditions into joins through the relations. The cast is needed
+ * because id_season is typed as a number (mapToPk), although for the ORM it is a relation.
  */
-type EpisodeRow = RowDataPacket & {
-    id: number;
-    id_season: number;
-    episode_number: number;
-    title: string;
-    description: string;
-    path: string;
-    views: number;
-    state: string;
-    id_author: number;
-    thumbnail_path: string | null;
-    duration: number | null;
-    uploader_user_name?: string | null;
-};
+export function visibleEpisode(
+    filter: { id?: number; path?: string; id_season?: number } = {},
+): FilterQuery<Episode> {
+    const { id_season, ...episode } = filter;
+    return {
+        ...episode,
+        state: "active",
+        id_season: {
+            ...(id_season === undefined ? {} : { id: id_season }),
+            state: "active",
+            id_serie: { state: "active" },
+        },
+    } as FilterQuery<Episode>;
+}
 
 /**
- * Transforms an EpisodeRow database record into an instance of Episode.
- */
-const toEpisode = (row: EpisodeRow): Episode => Object.assign(new Episode(
-    row.id_season,
-    row.episode_number,
-    row.title,
-    row.description,
-    row.path,
-    row.id_author,
-    Number(row.views),
-    row.state,
-    row.id
-), {
-    uploader_user_name: row.uploader_user_name ?? undefined,
-    thumbnail_path: row.thumbnail_path ?? null,
-    duration: row.duration === null ? null : Number(row.duration),
-});
-
-/**
- * EpisodeRepository implements data access logic for Episode entities.
+ * EpisodeRepository implements data access logic for Episode entities through the ORM.
  */
 export class EpisodeRepository implements Repository<Episode> {
+    /** The EntityManager of the current request (see RequestContext in index.ts). */
+    private get em() {
+        return orm.em;
+    }
 
     /**
-     * Retrieves all episodes from the platform ordered by season and episode number.
+     * Retrieves all visible episodes ordered by season and episode number.
      */
     async findAll(): Promise<Episode[]> {
-        const [rows] = await db.query<EpisodeRow[]>(
-            `SELECT e.id, e.id_season, e.episode_number, e.title, e.description,
-                    e.path, e.thumbnail_path, e.duration, e.views, e.state, e.id_author, u.user_name AS uploader_user_name
-             FROM episodes AS e
-             LEFT JOIN users AS u ON u.id_user = e.id_author
-             JOIN seasons AS s ON s.id = e.id_season
-             JOIN series AS parent ON parent.id = s.id_serie
-             WHERE e.state = 'active' AND s.state = 'active' AND parent.state = 'active'
-             ORDER BY e.id_season, e.episode_number`,
-        );
-        return rows.map(toEpisode);
+        return this.em.find(Episode, visibleEpisode(), { orderBy: { id_season: "asc", episode_number: "asc" } });
     }
 
     /**
-     * Finds a single episode by its primary key ID.
+     * Finds a single visible episode by its primary key ID.
      */
     async findOne(id: number): Promise<Episode | undefined> {
-        const [rows] = await db.query<EpisodeRow[]>(
-            `SELECT e.id, e.id_season, e.episode_number, e.title, e.description,
-                    e.path, e.thumbnail_path, e.duration, e.views, e.state, e.id_author, u.user_name AS uploader_user_name
-             FROM episodes AS e
-             LEFT JOIN users AS u ON u.id_user = e.id_author
-             JOIN seasons AS s ON s.id = e.id_season
-             JOIN series AS parent ON parent.id = s.id_serie
-             WHERE e.id = ? AND e.state = 'active' AND s.state = 'active' AND parent.state = 'active'`,
-            [id]
-        );
-        return rows[0] ? toEpisode(rows[0]) : undefined;
+        return (await this.em.findOne(Episode, visibleEpisode({ id }))) ?? undefined;
     }
 
     /**
-     * Specialized query: retrieves all episodes belonging to a specific season.
-     * Ordered chronologically by episode_number.
+     * Retrieves all visible episodes belonging to a specific season, ordered by episode_number.
      */
     async findBySeason(id_season: number): Promise<Episode[]> {
-        const [rows] = await db.query<EpisodeRow[]>(
-            `SELECT e.id, e.id_season, e.episode_number, e.title, e.description,
-                    e.path, e.thumbnail_path, e.duration, e.views, e.state, e.id_author, u.user_name AS uploader_user_name
-             FROM episodes AS e
-             LEFT JOIN users AS u ON u.id_user = e.id_author
-             JOIN seasons AS s ON s.id = e.id_season
-             JOIN series AS parent ON parent.id = s.id_serie
-             WHERE e.id_season = ?
-               AND e.state = 'active'
-               AND s.state = 'active'
-               AND parent.state = 'active'
-             ORDER BY e.episode_number`,
-            [id_season]
-        );
-        return rows.map(toEpisode);
+        return this.em.find(Episode, visibleEpisode({ id_season }), { orderBy: { episode_number: "asc" } });
     }
 
     /** Returns episodes uploaded by one user. */
     async findByAuthor(authorId: number): Promise<Episode[]> {
-        const [rows] = await db.execute<EpisodeRow[]>(
-            `SELECT id, id_season, episode_number, title, description, path, views, state, id_author
-             FROM episodes
-             WHERE id_author = ? AND state <> 'deleted'
-             ORDER BY id_season, episode_number`,
-            [authorId],
+        return this.em.find(
+            Episode,
+            { id_author: authorId, state: { $ne: "deleted" } },
+            { orderBy: { id_season: "asc", episode_number: "asc" } },
         );
-        return rows.map(toEpisode);
     }
 
     /**
-     * Inserts a new episode record into MySQL.
+     * Inserts a new episode.
+     * Fails with ER_DUP_ENTRY when the season already has an active episode with that number.
      */
     async create(item: Episode): Promise<Episode> {
-        const [result] = await db.execute<ResultSetHeader>(
-            "INSERT INTO episodes (id_season, episode_number, title, description, path, thumbnail_path, duration, views, state, id_author) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [item.id_season, item.episode_number, item.title, item.description, item.path, item.thumbnail_path, item.duration, item.views, item.state, item.id_author]
-        );
-        item.id = result.insertId;
+        await this.em.persist(item).flush();
         return item;
     }
 
     /**
-     * Partially updates an episode row.
+     * Updates only the editable fields supplied in input.
      */
     async update(id: number, input: Partial<Episode>): Promise<Episode | undefined> {
-        /* only the fields an uploader may edit: the season, file, views, state and author never change here */
-        const allowedFields = ["episode_number", "title", "description"] as const;
-        const fields = allowedFields.filter((field) => input[field] !== undefined);
-        if (fields.length === 0) return this.findOne(id);
-
-        const assignments = fields.map((field) => `${field} = ?`).join(", ");
-        const values = fields.map((field) => input[field]) as Array<string | number | boolean>;
-
-        await db.execute(
-            `UPDATE episodes SET ${assignments} WHERE id = ?`,
-            [...values, id]
-        );
-        return this.findOne(id);
+        const episode = await this.findOne(id);
+        if (!episode) return undefined;
+        this.em.assign(episode, pickDefined(input, EDITABLE_FIELDS));
+        await this.em.flush();
+        return episode;
     }
 
     /**
      * Logical delete: the episode is hidden everywhere, but its row and file are kept.
      */
     async delete(id: number): Promise<boolean> {
-        const [result] = await db.execute<ResultSetHeader>(
-            "UPDATE episodes SET state = 'deleted' WHERE id = ? AND state = 'active'",
-            [id]
-        );
-        return result.affectedRows > 0;
+        const changed = await this.em.nativeUpdate(Episode, { id, state: "active" }, { state: "deleted" });
+        return changed > 0;
     }
 }

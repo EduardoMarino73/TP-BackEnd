@@ -1,82 +1,49 @@
-import { ResultSetHeader, RowDataPacket } from "mysql2";
-import { db } from "../Shared/database/connections.js";
+import { orm } from "../Shared/database/connections.js";
+import { pickDefined } from "../Shared/repository.js";
+import { Administrator } from "./administrator/administrator.entity.js";
 import { User, UserRole } from "./user.entity.js";
+import { UserSession } from "./user_session.entity.js";
+import { Viewer } from "./viewer/viewer.entity.js";
 
-/** A row from `users`; the password hash is selected only for sign-in. */
-export type UserRow = RowDataPacket & {
-    id_user: number;
-    user_name: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-    password_hash?: string;
-    role: UserRole;
-    active: number;
-};
-
-const USER_COLUMNS = "id_user, user_name, first_name, last_name, email, role, active";
-
-/** Converts database values into the safe public account model. */
-function toUser(row: UserRow): User {
-    return new User(
-        row.id_user,
-        row.user_name,
-        row.first_name,
-        row.last_name,
-        row.email,
-        row.role,
-        Boolean(row.active),
-    );
-}
+/** Fields an account owner may edit. */
+const EDITABLE_FIELDS = ["user_name", "first_name", "last_name", "email"] as const;
 
 /** Database operations shared by viewer and administrator features. */
 export class UserRepository {
-    /** Returns every account without exposing password hashes. */
+    /** The EntityManager of the current request (see RequestContext in index.ts). */
+    private get em() {
+        return orm.em;
+    }
+
+    /** Returns every account. The password hash is lazy, so it is not even read. */
     async findAll(): Promise<User[]> {
-        const [rows] = await db.query<UserRow[]>(
-            `SELECT ${USER_COLUMNS} FROM users ORDER BY id_user`,
-        );
-        return rows.map(toUser);
+        return this.em.find(User, {}, { orderBy: { id_user: "asc" } });
     }
 
-    /** Looks up a public account by its database ID. */
+    /** Looks up an account by its database ID. */
     async findById(id: number): Promise<User | undefined> {
-        const [rows] = await db.execute<UserRow[]>(
-            `SELECT ${USER_COLUMNS} FROM users WHERE id_user = ?`,
-            [id],
-        );
-        return rows[0] ? toUser(rows[0]) : undefined;
+        return (await this.em.findOne(User, id)) ?? undefined;
     }
 
-    /** Finds the private account row needed to check a login password. */
-    async findByLogin(login: string): Promise<UserRow | undefined> {
-        const [rows] = await db.execute<UserRow[]>(
-            `SELECT ${USER_COLUMNS}, password_hash
-             FROM users
-             WHERE email = ? OR user_name = ?
-             LIMIT 1`,
-            [login, login],
+    /** Finds an account by email or username, with the password hash needed to check a login. */
+    async findByLogin(login: string): Promise<User | undefined> {
+        const user = await this.em.findOne(
+            User,
+            { $or: [{ email: login }, { user_name: login }] },
+            { populate: ["password_hash"] },
         );
-        return rows[0];
+        return user ?? undefined;
     }
 
     async findByEmail(email: string): Promise<User | undefined> {
-        const [rows] = await db.execute<UserRow[]>(
-            `SELECT ${USER_COLUMNS} FROM users WHERE email = ?`,
-            [email],
-        );
-        return rows[0] ? toUser(rows[0]) : undefined;
+        return (await this.em.findOne(User, { email })) ?? undefined;
     }
 
     async findByUsername(username: string): Promise<User | undefined> {
-        const [rows] = await db.execute<UserRow[]>(
-            `SELECT ${USER_COLUMNS} FROM users WHERE user_name = ?`,
-            [username],
-        );
-        return rows[0] ? toUser(rows[0]) : undefined;
+        return (await this.em.findOne(User, { user_name: username })) ?? undefined;
     }
 
-    /** Creates an account and returns it without its password hash. */
+    /** Creates a viewer or an administrator account. The hash is never returned (hidden). */
     async create(input: {
         user_name: string;
         first_name: string;
@@ -85,22 +52,15 @@ export class UserRepository {
         password_hash: string;
         role: UserRole;
     }): Promise<User> {
-        const [result] = await db.execute<ResultSetHeader>(
-            `INSERT INTO users
-                (user_name, first_name, last_name, email, password_hash, role)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [
-                input.user_name,
-                input.first_name,
-                input.last_name,
-                input.email,
-                input.password_hash,
-                input.role,
-            ],
+        const AccountClass = input.role === "administrator" ? Administrator : Viewer;
+        const user = new AccountClass(
+            input.user_name,
+            input.first_name,
+            input.last_name,
+            input.email,
+            input.password_hash,
         );
-
-        const user = await this.findById(result.insertId);
-        if (!user) throw new Error("Created user could not be loaded");
+        await this.em.persist(user).flush();
         return user;
     }
 
@@ -109,55 +69,40 @@ export class UserRepository {
         id: number,
         input: Partial<Pick<User, "user_name" | "first_name" | "last_name" | "email">>,
     ): Promise<User | undefined> {
-        const editableFields = ["user_name", "first_name", "last_name", "email"] as const;
-        const changedFields = editableFields.filter((field) => input[field] !== undefined);
-
-        if (changedFields.length > 0) {
-            const assignments = changedFields.map((field) => `${field} = ?`).join(", ");
-            const values = changedFields.map((field) => input[field] as string);
-            await db.execute(
-                `UPDATE users SET ${assignments} WHERE id_user = ?`,
-                [...values, id],
-            );
-        }
-
-        return this.findById(id);
+        const user = await this.findById(id);
+        if (!user) return undefined;
+        this.em.assign(user, pickDefined(input, EDITABLE_FIELDS));
+        await this.em.flush();
+        return user;
     }
 
     /** Enables or disables an account. */
     async setActive(id: number, active: boolean): Promise<User | undefined> {
-        await db.execute("UPDATE users SET active = ? WHERE id_user = ?", [active, id]);
-        return this.findById(id);
+        const user = await this.findById(id);
+        if (!user) return undefined;
+        user.active = active;
+        await this.em.flush();
+        return user;
     }
 
     /** Stores a hash of the bearer token rather than the token itself. */
     async saveSession(userId: number, tokenHash: string, expiresAt: Date): Promise<void> {
-        await db.execute(
-            "INSERT INTO user_sessions (user_id, token_hash, expires_at) VALUES (?, ?, ?)",
-            [userId, tokenHash, expiresAt],
-        );
+        const session = new UserSession(this.em.getReference(User, userId), tokenHash, expiresAt);
+        await this.em.persist(session).flush();
     }
 
     /** Returns the account for a valid, unexpired session. */
     async findSession(tokenHash: string): Promise<User | undefined> {
-        const qualifiedColumns = USER_COLUMNS
-            .split(", ")
-            .map((column) => `u.${column}`)
-            .join(", ");
-        const [rows] = await db.execute<UserRow[]>(
-            `SELECT ${qualifiedColumns}
-             FROM user_sessions AS s
-             JOIN users AS u ON u.id_user = s.user_id
-             WHERE s.token_hash = ?
-               AND s.expires_at > CURRENT_TIMESTAMP
-               AND u.active = TRUE`,
-            [tokenHash],
+        const session = await this.em.findOne(
+            UserSession,
+            { tokenHash, expiresAt: { $gt: new Date() }, user: { active: true } },
+            { populate: ["user"] },
         );
-        return rows[0] ? toUser(rows[0]) : undefined;
+        return session?.user;
     }
 
     /** Removes a session, which makes its bearer token unusable. */
     async deleteSession(tokenHash: string): Promise<void> {
-        await db.execute("DELETE FROM user_sessions WHERE token_hash = ?", [tokenHash]);
+        await this.em.nativeDelete(UserSession, { tokenHash });
     }
 }

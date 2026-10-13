@@ -1,32 +1,89 @@
+import { Entity, Enum, Formula, ManyToOne, PrimaryKey, Property } from "@mikro-orm/core";
+import { ReportType } from "../Report_Type/report_type.entity.js";
+import { Viewer } from "../User_Folder/viewer/viewer.entity.js";
+
 /** Content types that viewers can report for moderation. */
 export type ReportTargetType = "movie" | "series";
 
-/** A moderation case generated after an audiovisual reaches the report threshold. */
+/**
+ * A moderation case generated after an audiovisual reaches the report threshold.
+ * Mapped to the moderation_cases table.
+ */
+@Entity({ tableName: "moderation_cases" })
 export class Complaint {
-    constructor(
-        public id: number,
-        public targetType: ReportTargetType,
-        public targetId: number,
-        public reportCount: number,
-        public status: "pending" | "appealed" | "upheld" | "dismissed",
-    ) { }
+    @PrimaryKey()
+    id!: number;
+
+    @Enum({ items: ["movie", "series"] })
+    targetType: ReportTargetType;
+
+    @Property({ type: "integer" })
+    targetId: number;
+
+    @Property({ type: "integer" })
+    reportCount: number;
+
+    @Enum({ items: ["pending", "appealed", "upheld", "dismissed"] })
+    status: "pending" | "appealed" | "upheld" | "dismissed";
+
+    /** Set by the database; only used in case summaries. */
+    @Property({ hidden: true, nullable: true })
+    createdAt?: Date;
+
+    constructor(targetType: ReportTargetType, targetId: number, reportCount: number) {
+        this.targetType = targetType;
+        this.targetId = targetId;
+        this.reportCount = reportCount;
+        this.status = "pending";
+    }
 }
 
 /**
  * An individual viewer report that contributes to a moderation case.
  * It has one report type ("Violence", "Other"...) and an optional explanation.
+ * Mapped to the content_reports table.
  */
+@Entity({ tableName: "content_reports" })
 export class ContentReport {
+    @PrimaryKey()
+    id!: number;
+
+    @Enum({ items: ["movie", "series"] })
+    targetType: ReportTargetType;
+
+    @Property({ type: "integer" })
+    targetId: number;
+
+    /** The viewer who reported, kept as its id. */
+    @ManyToOne(() => Viewer, { fieldName: "reporter_id", mapToPk: true })
+    reporterId: number;
+
+    /** The report type, kept as its id. */
+    @ManyToOne(() => ReportType, { fieldName: "report_type_id", mapToPk: true })
+    reportTypeId: number;
+
+    /** Name of the report type, for display; read from report_types. */
+    @Formula(({ alias }) => `(SELECT t.name FROM report_types AS t WHERE t.id = ${alias}.report_type_id)`, { type: "string" })
+    reportType: string;
+
+    @Property({ type: "string", length: 1000, nullable: true })
+    details: string | null;
+
     constructor(
-        public id: number,
-        public targetType: ReportTargetType,
-        public targetId: number,
-        public reporterId: number,
-        public reportTypeId: number,
-        // name of the report type, for display
-        public reportType: string,
-        public details: string | null,
-    ) { }
+        targetType: ReportTargetType,
+        targetId: number,
+        reporterId: number,
+        reportTypeId: number,
+        reportType: string,
+        details: string | null,
+    ) {
+        this.targetType = targetType;
+        this.targetId = targetId;
+        this.reporterId = reporterId;
+        this.reportTypeId = reportTypeId;
+        this.reportType = reportType;
+        this.details = details;
+    }
 }
 
 /** How many reports of one type a case has. */

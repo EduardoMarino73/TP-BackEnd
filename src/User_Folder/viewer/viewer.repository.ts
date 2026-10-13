@@ -1,16 +1,14 @@
-import { Audiovisual } from "../../Audiovisual/audiovisual.entity.js";
+import { orm } from "../../Shared/database/connections.js";
 import { AppealRepository } from "../../Appeal/appeal.repository.js";
 import { EpisodeRepository } from "../../Episode/episode.repository.js";
 import { MovieRepository } from "../../Movie/movie.repository.js";
 import { ComplaintRepository } from "../../Report/complaint.repository.js";
 import { ReviewRepository } from "../../Review/review.repository.js";
-import { UserRepository } from "../user.repository.js";
 import { Viewer } from "./viewer.entity.js";
 import { ModerationCaseSummary } from "../../Report/complaint.entity.js";
 
-/** Loads viewer account and engagement data from the current database schema. */
+/** Loads viewer account and engagement data. */
 export class ViewerRepository {
-    private readonly users = new UserRepository();
     private readonly movies = new MovieRepository();
     private readonly episodes = new EpisodeRepository();
     private readonly reviews = new ReviewRepository();
@@ -19,30 +17,17 @@ export class ViewerRepository {
 
     /** Returns a viewer with its uploaded movies, episodes, and reviews. */
     async findOne(id: number): Promise<Viewer | undefined> {
-        const user = await this.users.findById(id);
-        if (!user || user.role !== "viewer") return undefined;
+        // loading the Viewer subclass only matches users whose role is 'viewer'
+        const viewer = await orm.em.findOne(Viewer, id);
+        if (!viewer) return undefined;
 
-        const [movies, episodes, reviews, reportsReceivedCount, appeals] = await Promise.all([
-            this.movies.findByAuthor(id),
-            this.episodes.findByAuthor(id),
-            this.reviews.findByViewer(id),
-            this.reports.countReceivedByViewer(id),
-            this.appeals.findByViewer(id),
-        ]);
-        const uploadedAudiovisuals: Audiovisual[] = [...movies, ...episodes];
-
-        return new Viewer(
-            user.id_user,
-            user.user_name,
-            user.first_name,
-            user.last_name,
-            user.email,
-            user.active,
-            reportsReceivedCount,
-            appeals,
-            uploadedAudiovisuals,
-            reviews,
-        );
+        const movies = await this.movies.findByAuthor(id);
+        const episodes = await this.episodes.findByAuthor(id);
+        viewer.uploadedAudiovisuals = [...movies, ...episodes];
+        viewer.reviews = await this.reviews.findByViewer(id);
+        viewer.reportsReceivedCount = await this.reports.countReceivedByViewer(id);
+        viewer.appeals = await this.appeals.findByViewer(id);
+        return viewer;
     }
 
     /** Moderation cases about content this viewer uploaded, newest first. */

@@ -1,90 +1,72 @@
-import { ResultSetHeader, RowDataPacket } from "mysql2";
-import { db } from "../Shared/database/connections.js";
-import { WatchLater, WatchLaterItem, WatchLaterType } from "./watch_later.entity.js";
+import { orm } from "../Shared/database/connections.js";
+import { Movie } from "../Movie/movie.entity.js";
+import { Serie } from "../Series/series.entity.js";
+import { WatchLater, WatchLaterItem } from "./watch_later.entity.js";
 
-/** A row of watch_later joined with its movie or series. */
-type WatchLaterRow = RowDataPacket & {
-    id: number;
-    viewer_id: number;
-    audiovisual_id: number;
-    audiovisual_type: WatchLaterType;
-    created_at: Date;
-    title: string;
-    category: string;
-    description: string;
-    thumbnail_path: string | null;
-    duration: number | null;
-};
-
-const toItem = (row: WatchLaterRow): WatchLaterItem => Object.assign(
-    new WatchLater(row.viewer_id, row.audiovisual_id, row.audiovisual_type, row.id, row.created_at),
-    {
-        title: row.title,
-        category: row.category ?? "",
-        description: row.description ?? "",
-        thumbnail_path: row.thumbnail_path ?? null,
-        duration: row.duration === null ? null : Number(row.duration),
-    },
-);
-
-/** Database access for the "Watch later" lists. */
+/** Database access for the "Watch later" lists, through the ORM. */
 export class WatchLaterRepository {
+    /** The EntityManager of the current request (see RequestContext in index.ts). */
+    private get em() {
+        return orm.em;
+    }
+
     /**
-     * The viewer's list, newest first. Content that is no longer active
-     * (suspended or deleted) is left out.
+     * The viewer's list, newest first, with the movie or series of each item.
+     * Content that is no longer active (suspended or deleted) is left out.
      */
     async findByViewer(viewerId: number): Promise<WatchLaterItem[]> {
-        const [rows] = await db.execute<WatchLaterRow[]>(
-            `SELECT w.id, w.viewer_id, w.audiovisual_id, w.audiovisual_type, w.created_at,
-                    COALESCE(m.title, s.title) AS title,
-                    COALESCE(m.category, s.category) AS category,
-                    COALESCE(m.description, s.description) AS description,
-                    m.duration,
-                    COALESCE(m.thumbnail_path, s.thumbnail_path, (
-                        SELECT e.thumbnail_path
-                        FROM seasons AS se
-                        JOIN episodes AS e ON e.id_season = se.id
-                        WHERE se.id_serie = s.id AND se.state = 'active' AND e.state = 'active'
-                          AND e.thumbnail_path IS NOT NULL
-                        ORDER BY se.season_number, e.episode_number
-                        LIMIT 1
-                    )) AS thumbnail_path
-             FROM watch_later AS w
-             LEFT JOIN movies AS m
-                ON w.audiovisual_type = 'movie' AND m.id = w.audiovisual_id AND m.state = 'active'
-             LEFT JOIN series AS s
-                ON w.audiovisual_type = 'series' AND s.id = w.audiovisual_id AND s.state = 'active'
-             WHERE w.viewer_id = ? AND COALESCE(m.id, s.id) IS NOT NULL
-             ORDER BY w.created_at DESC, w.id DESC`,
-            [viewerId],
-        );
-        return rows.map(toItem);
+        const items = await this.em.find(WatchLater, { viewerId }, { orderBy: { addedAt: "desc", id: "desc" } });
+        const idsOf = (type: WatchLater["audiovisualType"]) => items
+            .filter((item) => item.audiovisualType === type)
+            .map((item) => item.audiovisualId);
+
+        const movies = await this.em.find(Movie, { id: { $in: idsOf("movie") }, state: "active" });
+        const series = await this.em.find(Serie, { id: { $in: idsOf("series") }, state: "active" });
+        const movieById = new Map(movies.map((movie) => [movie.id, movie]));
+        const serieById = new Map(series.map((serie) => [serie.id, serie]));
+
+        return items.flatMap((item): WatchLaterItem[] => {
+            const base = {
+                id: item.id,
+                viewerId: item.viewerId,
+                audiovisualId: item.audiovisualId,
+                audiovisualType: item.audiovisualType,
+                addedAt: item.addedAt,
+            };
+            if (item.audiovisualType === "movie") {
+                const movie = movieById.get(item.audiovisualId);
+                return movie ? [{
+                    ...base,
+                    title: movie.title,
+                    category: movie.category ?? "",
+                    description: movie.description ?? "",
+                    thumbnail_path: movie.thumbnail_path ?? null,
+                    duration: movie.duration ?? null,
+                }] : [];
+            }
+            const serie = serieById.get(item.audiovisualId);
+            return serie ? [{
+                ...base,
+                title: serie.title,
+                category: serie.category ?? "",
+                description: serie.description ?? "",
+                thumbnail_path: serie.display_thumbnail_path ?? null,
+                duration: null,
+            }] : [];
+        });
     }
 
     async findOne(id: number): Promise<WatchLater | undefined> {
-        const [rows] = await db.execute<WatchLaterRow[]>(
-            "SELECT id, viewer_id, audiovisual_id, audiovisual_type, created_at FROM watch_later WHERE id = ?",
-            [id],
-        );
-        const row = rows[0];
-        return row
-            ? new WatchLater(row.viewer_id, row.audiovisual_id, row.audiovisual_type, row.id, row.created_at)
-            : undefined;
+        return (await this.em.findOne(WatchLater, id)) ?? undefined;
     }
 
     /** Fails with ER_DUP_ENTRY when the viewer already saved that content. */
     async create(item: WatchLater): Promise<WatchLater> {
-        const [result] = await db.execute<ResultSetHeader>(
-            "INSERT INTO watch_later (viewer_id, audiovisual_id, audiovisual_type) VALUES (?, ?, ?)",
-            [item.viewerId, item.audiovisualId, item.audiovisualType],
-        );
-        item.id = result.insertId;
-        item.addedAt = new Date();
+        await this.em.persist(item).flush();
         return item;
     }
 
     async delete(id: number): Promise<boolean> {
-        const [result] = await db.execute<ResultSetHeader>("DELETE FROM watch_later WHERE id = ?", [id]);
-        return result.affectedRows > 0;
+        return (await this.em.nativeDelete(WatchLater, { id })) > 0;
     }
 }
