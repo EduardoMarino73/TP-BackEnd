@@ -1,3 +1,5 @@
+// first import: the entity decorators need it to record the property types
+import "reflect-metadata";
 import express, { NextFunction, Request, Response } from "express";
 import { movieRouter } from "./Movie/movie.routes.js";
 import { seriesRouter } from "./Series/series.routes.js";
@@ -14,10 +16,13 @@ import { complaintRouter } from "./Report/complaint.routes.js";
 import { appealRouter } from "./Appeal/appeal.routes.js";
 import { reportTypeRouter } from "./Report_Type/report_type.routes.js";
 import { watchLaterRouter } from "./WatchLater/watch_later.routes.js";
-import { db } from "./Shared/database/connections.js";
+import { orm } from "./Shared/database/connections.js";
+import { requestContext } from "./Shared/database/request-context.js";
 import { episodePath, moviePath, thumbnailPath } from "./Shared/database/content.Storage.js";
 import { config } from "./Shared/config.js";
-import { RowDataPacket } from "mysql2";
+import { Movie } from "./Movie/movie.entity.js";
+import { Episode } from "./Episode/episode.entity.js";
+import { visibleEpisode } from "./Episode/episode.repository.js";
 
 //start the server
 const app = express()
@@ -27,15 +32,15 @@ app.use(cors(config.corsOrigins.length > 0 ? { origin: config.corsOrigins } : un
 // Parse incoming requests with JSON payloads
 app.use(express.json());
 
+// Each request gets its own ORM EntityManager (see requestContext).
+app.use(requestContext);
+
 // Serve only media files that still belong to active content records.
 app.use("/movies", async (req, res, next) => {
     try {
         const mediaPath = `/movies/${path.basename(req.path)}`;
-        const [rows] = await db.execute<(RowDataPacket & { id: number })[]>(
-            "SELECT id FROM movies WHERE path = ? AND state = 'active' LIMIT 1",
-            [mediaPath],
-        );
-        if (rows.length === 0) return res.sendStatus(404);
+        const found = await orm.em.count(Movie, { path: mediaPath, state: "active" });
+        if (found === 0) return res.sendStatus(404);
         return next();
     } catch (error) {
         return next(error);
@@ -45,19 +50,8 @@ app.use("/movies", async (req, res, next) => {
 app.use("/series", async (req, res, next) => {
     try {
         const mediaPath = `/series/${path.basename(req.path)}`;
-        const [rows] = await db.execute<(RowDataPacket & { id: number })[]>(
-            `SELECT e.id
-             FROM episodes AS e
-             JOIN seasons AS s ON s.id = e.id_season
-             JOIN series AS parent ON parent.id = s.id_serie
-             WHERE e.path = ?
-               AND e.state = 'active'
-               AND s.state = 'active'
-               AND parent.state = 'active'
-             LIMIT 1`,
-            [mediaPath],
-        );
-        if (rows.length === 0) return res.sendStatus(404);
+        const found = await orm.em.count(Episode, visibleEpisode({ path: mediaPath }));
+        if (found === 0) return res.sendStatus(404);
         return next();
     } catch (error) {
         return next(error);

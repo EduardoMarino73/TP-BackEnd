@@ -50,7 +50,7 @@ export class SeriesService {
             input.description ?? "",
             "active"
         );
-        serie.thumbnail_path = input.thumbnail_path ?? null;
+        serie.cover_path = input.thumbnail_path ?? null;
         return this.repo.create(serie);
     }
 
