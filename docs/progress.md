@@ -94,4 +94,26 @@ Counts taken when these minutes were made (2026-10-13); they include merge commi
   thumbnails and duration.
 - **Course fork** (10-06, Candy-Ram): `proposal.md` updated.
 
+### October 13, 2026: persistence moved to an ORM
+
+- **Why:** the course asks that the backend reach the database through a mapper (ORM/ODM). The
+  Repository pattern alone is only accepted when the database has no mapper for JavaScript, and
+  MySQL has several. Until then the backend used `mysql2` with hand-written SQL.
+- **Decision:** MikroORM 6 (`@mikro-orm/core`, `@mikro-orm/mysql`), the ORM taught in the course.
+  Version 7 needs Node 22.17 or later; the team uses Node 20.
+- **What changed in the backend** (pull request #8, `Eduardo` branch, merged into `main`):
+  - Each `*.entity.ts` class is now an ORM entity mapped to its table of `init.sql`. The schema did
+    not change.
+  - `Viewer` and `Administrator` extend `User` in the `users` table, told apart by `role`
+    (single table inheritance), as in the domain diagram.
+  - The repositories use the ORM's `EntityManager`; reports and appeals use its transactions with
+    row locks, and the list of reports groups its reasons with the `QueryBuilder`.
+  - Each request gets its own `EntityManager` (`RequestContext`).
+  - `mysql2` is no longer a direct dependency; `MYSQL_DEBUG=true` logs the SQL the ORM runs.
+- **Checks:** the old and the new backend answered the same sequence of API calls with the same
+  JSON, so the frontend did not change. The only difference: the profile now returns every field
+  of the viewer's episodes.
+- **Documentation:** the backend README, `.env.example` and the proposal's technical note were
+  updated.
+
 Every change is detailed in the git history (`git log liam`).
